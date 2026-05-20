@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Migration/admin scripts that may contain credentials
+run-migration.mjs
+db-check.mjs
+query.js
+*.seed.mjs
+*.seed.js
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Supabase local dev
+supabase/.branches
+supabase/.temp
