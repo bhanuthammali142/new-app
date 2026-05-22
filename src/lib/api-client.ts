@@ -358,3 +358,21 @@ export const apiSuperAdmin = {
       body: JSON.stringify(data),
     }),
 }
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+export const apiBilling = {
+  getMySubscription: () =>
+    request<{ success: boolean; data: any }>('/api/billing/my-subscription'),
+
+  subscribe: (planId: string) =>
+    request<{ success: boolean; data: any }>('/api/billing/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ plan_id: planId }),
+    }),
+
+  verify: (data: any) =>
+    request<{ success: boolean; message: string }>('/api/billing/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+}

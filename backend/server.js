@@ -11,6 +11,8 @@ const studentRoutes    = require('./routes/studentRoutes')
 const roomRoutes       = require('./routes/roomRoutes')
 const miscRoutes       = require('./routes/miscRoutes')
 const superAdminRoutes = require('./routes/superAdminRoutes')
+const subscriptionRoutes = require('./routes/subscriptionRoutes')
+const webhookRoutes = require('./routes/webhookRoutes')
 
 const app = express()
 
@@ -108,6 +110,8 @@ app.use('/api/students',    apiLimiter, studentRoutes)
 app.use('/api/rooms',       apiLimiter, roomRoutes)
 app.use('/api',            apiLimiter, miscRoutes)
 app.use('/api/super-admin', apiLimiter, superAdminRoutes)
+app.use('/api/billing',     subscriptionRoutes)
+app.use('/api/webhooks',    webhookRoutes)
 
 // ── TEST ROUTE ─────────────────────────────────────────────────────────────────
 app.get('/test', (req, res) => {

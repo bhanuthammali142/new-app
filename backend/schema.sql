@@ -3,6 +3,9 @@
 -- =============================================
 
 -- Clean up existing tables if running repeatedly
+DROP TABLE IF EXISTS platform_invoices CASCADE;
+DROP TABLE IF EXISTS subscriptions CASCADE;
+DROP TABLE IF EXISTS billing_plans CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS reward_points CASCADE;
 DROP TABLE IF EXISTS reward_leaderboard CASCADE;
@@ -301,5 +304,47 @@ CREATE TABLE platform_notifications (
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
     target_role VARCHAR(20) DEFAULT 'all' CHECK (target_role IN ('all', 'super_admin', 'admin', 'student')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- 17. BILLING_PLANS
+-- =============================================
+CREATE TABLE billing_plans (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    billing_cycle VARCHAR(20) DEFAULT 'monthly' CHECK (billing_cycle IN ('monthly', 'yearly')),
+    max_students INT DEFAULT 200,
+    razorpay_plan_id VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- 18. SUBSCRIPTIONS
+-- =============================================
+CREATE TABLE subscriptions (
+    id VARCHAR(36) PRIMARY KEY,
+    hostel_id INT NOT NULL REFERENCES hostels(id) ON DELETE CASCADE,
+    plan_id VARCHAR(36) NOT NULL REFERENCES billing_plans(id),
+    status VARCHAR(20) DEFAULT 'trialing' CHECK (status IN ('active', 'past_due', 'canceled', 'trialing')),
+    current_period_start TIMESTAMP,
+    current_period_end TIMESTAMP,
+    razorpay_subscription_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- 19. PLATFORM_INVOICES
+-- =============================================
+CREATE TABLE platform_invoices (
+    id VARCHAR(36) PRIMARY KEY,
+    hostel_id INT NOT NULL REFERENCES hostels(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'failed')),
+    paid_at TIMESTAMP,
+    razorpay_payment_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  CreditCard
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { name: 'Complaints', href: '/admin/complaints', icon: MessageSquareWarning },
   { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 

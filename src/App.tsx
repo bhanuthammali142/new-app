@@ -23,6 +23,7 @@ const AdminAttendance     = lazy(() => import('./pages/Attendance').then(m => ({
 const AdminComplaints     = lazy(() => import('./pages/Complaints').then(m => ({ default: m.Complaints })))
 const AdminAnnouncements  = lazy(() => import('./pages/Announcements').then(m => ({ default: m.Announcements })))
 const AdminSettings       = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })))
+const AdminBilling        = lazy(() => import('./admin/pages/Billing').then(m => ({ default: m.Billing })))
 
 // ── Student layout + pages (lazy) ────────────────────────────────────────────
 const StudentLayout        = lazy(() => import('./student/StudentLayout').then(m => ({ default: m.StudentLayout })))
@@ -84,6 +85,7 @@ function App() {
               <Route path="complaints"    element={<Suspense fallback={<Fallback />}><AdminComplaints /></Suspense>} />
               <Route path="announcements" element={<Suspense fallback={<Fallback />}><AdminAnnouncements /></Suspense>} />
               <Route path="settings"      element={<Suspense fallback={<Fallback />}><AdminSettings /></Suspense>} />
+              <Route path="billing"       element={<Suspense fallback={<Fallback />}><AdminBilling /></Suspense>} />
               <Route path="*"             element={<Navigate to="dashboard" replace />} />
             </Route>
           </Route>

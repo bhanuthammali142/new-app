@@ -40,6 +40,27 @@ async function addStudent(req, res) {
   try {
     await conn.query('BEGIN')
 
+    // ── CAPACITY CHECK ──
+    const { rows: [subscription] } = await conn.query(`
+      SELECT bp.max_students 
+      FROM subscriptions s
+      JOIN billing_plans bp ON s.plan_id = bp.id
+      WHERE s.hostel_id = $1 AND s.status IN ('active', 'trialing')
+      ORDER BY s.created_at DESC LIMIT 1
+    `, [hostel_id])
+    
+    const max_students = subscription ? subscription.max_students : 200;
+
+    const { rows: [{ student_count }] } = await conn.query(`
+      SELECT COUNT(*) as student_count FROM students WHERE hostel_id = $1 AND is_active = TRUE
+    `, [hostel_id])
+
+    if (parseInt(student_count, 10) >= max_students) {
+      await conn.query('ROLLBACK')
+      conn.release()
+      return res.status(403).json({ error: 'Hostel has reached maximum student capacity for the current billing plan. Please upgrade to add more students.' })
+    }
+
     // ── CROSS-HOSTEL ADMISSION CHECK ──
     const conditions = [];
     const values = [];
