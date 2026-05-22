@@ -26,9 +26,11 @@ async function getRooms(req, res) {
 async function addRoom(req, res) {
   const { hostel_id, room_number, floor, type, capacity, monthly_fee } = req.body
   if (!hostel_id || !room_number) return res.status(400).json({ error: 'hostel_id and room_number required' })
+  const conn = await pool.connect()
   try {
+    await conn.query('BEGIN')
     const roomId = crypto.randomUUID()
-    await pool.query(
+    await conn.query(
       'INSERT INTO rooms (id, hostel_id, room_number, floor, type, capacity, monthly_fee) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
       [roomId, hostel_id, room_number, floor || 'Ground Floor', type || 'Non-AC', capacity || 3, monthly_fee || 0]
     )
@@ -38,13 +40,18 @@ async function addRoom(req, res) {
       [crypto.randomUUID(), hostel_id, roomId, `B${i + 1}`, 'available']
     )
     for (const b of bedInserts) {
-      await pool.query('INSERT INTO beds (id, hostel_id, room_id, bed_number, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', b)
+      await conn.query('INSERT INTO beds (id, hostel_id, room_id, bed_number, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', b)
     }
+    await conn.query('COMMIT')
+    
     const { rows: rows } = await pool.query('SELECT * FROM rooms WHERE id = $1', [roomId])
     res.status(201).json(rows[0])
   } catch (err) {
+    await conn.query('ROLLBACK')
     console.error('[addRoom]', err)
     res.status(500).json({ error: 'Server error' })
+  } finally {
+    conn.release()
   }
 }
 

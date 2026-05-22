@@ -6,7 +6,7 @@
 
 const tenantGuard = async (req, res, next) => {
   // Get hostel_id from query, body, or params
-  let requestedHostelId = req.query.hostel_id || req.body.hostel_id || req.params.hostel_id;
+  let requestedHostelId = req.query?.hostel_id || req.body?.hostel_id || req.params?.hostel_id;
   
   // Super admins can access any hostel
   if (req.user?.role === 'super_admin') {

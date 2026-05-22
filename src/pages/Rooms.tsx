@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { cn } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, getRoomsWithBeds, addRoom, updateRoom } from '../lib/api'
+import { Skeleton } from '../components/Skeleton'
+import { AnimateView } from '../components/AnimateView'
 
 interface BedData { id: string; bed_number: string; status: string; students?: { full_name: string }[] }
 interface RoomData { id: string; room_number: string; floor: string | null; type: string; capacity: number; monthly_fee: number; beds: BedData[] }
@@ -208,74 +210,108 @@ export function Rooms() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-40 gap-3 text-slate-400"><Loader2 className="animate-spin h-5 w-5" /><span>Loading rooms...</span></div>
-      ) : filtered.length === 0 ? (
-        <div className="card-premium flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
-          <p className="font-medium">No rooms yet.</p>
-          <p className="text-sm">Click "Add Room" to create your first room with auto-generated beds.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((room) => {
-            const occupied = room.beds.filter(b => b.status === 'occupied').length
-            return (
-              <div key={room.id} className="card-premium flex flex-col group">
+      <AnimateView
+        isLoading={loading}
+        fallback={
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="card-premium flex flex-col bg-white">
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                  <div>
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-slate-900">Room {room.room_number}</h3>
-                      <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-semibold border border-slate-200">{room.type}</span>
+                      <Skeleton className="h-7 w-24 rounded" />
+                      <Skeleton className="h-5 w-16 rounded" />
                     </div>
-                    <p className="text-sm text-slate-500 mt-0.5">{room.floor ?? 'No floor set'}</p>
-                    <p className="text-sm font-semibold text-emerald-600 mt-0.5">₹{Number(room.monthly_fee).toLocaleString('en-IN')}/month</p>
+                    <Skeleton className="h-4 w-20 rounded" />
+                    <Skeleton className="h-4 w-28 rounded" />
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <button 
-                      onClick={() => openEditModal(room)} 
-                      className="text-slate-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" 
-                      title="Edit Room Details"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <span className="text-sm font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">{occupied}/{room.capacity}</span>
-                  </div>
+                  <Skeleton className="h-8 w-12 rounded-full" />
                 </div>
                 <div className="p-5 flex-1 bg-slate-50/50">
                   <div className="grid grid-cols-2 gap-3">
-                    {room.beds.map(bed => {
-                      // Note: Supabase nested array might be empty or missing depending on join config
-                      // Ensure student name resolves smoothly
-                      const occupants = bed.students || [];
-                      const occupantName = occupants.length > 0 ? occupants[0].full_name : null;
-                      
-                      return (
-                        <div key={bed.id}
-                          className={cn("p-3 rounded-lg border flex flex-col gap-1 transition-transform hover:scale-[1.02] cursor-pointer",
-                            bed.status === 'available' && "bg-white border-emerald-200 hover:border-emerald-300",
-                            bed.status === 'occupied' && "bg-blue-50 border-blue-200",
-                            bed.status === 'maintenance' && "bg-amber-50 border-amber-200"
-                          )}>
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-sm text-slate-700">{bed.bed_number}</span>
-                            <div className={cn("h-2 w-2 rounded-full",
-                              bed.status === 'available' ? "bg-emerald-500" : bed.status === 'occupied' ? "bg-blue-500" : "bg-amber-500")} />
-                          </div>
-                          <span className="text-xs truncate font-medium">
-                            {bed.status === 'occupied' 
-                              ? (occupantName ? <span className="text-blue-700">{occupantName}</span> : 'Occupied') 
-                              : <span className="text-slate-400 capitalize">{bed.status}</span>}
-                          </span>
+                    {[1, 2, 3, 4].map(j => (
+                      <div key={j} className="p-3 rounded-lg border border-slate-100 bg-white">
+                        <div className="flex items-center justify-between mb-2">
+                          <Skeleton className="h-4 w-10 rounded" />
+                          <Skeleton className="h-2 w-2 rounded-full" />
                         </div>
-                      )
-                    })}
+                        <Skeleton className="h-3 w-16 rounded" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            )
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        }
+      >
+        {filtered.length === 0 ? (
+          <div className="card-premium flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
+            <p className="font-medium">No rooms yet.</p>
+            <p className="text-sm">Click "Add Room" to create your first room with auto-generated beds.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((room) => {
+              const occupied = room.beds.filter(b => b.status === 'occupied').length
+              return (
+                <div key={room.id} className="card-premium flex flex-col group">
+                  <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-slate-900">Room {room.room_number}</h3>
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-semibold border border-slate-200">{room.type}</span>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-0.5">{room.floor ?? 'No floor set'}</p>
+                      <p className="text-sm font-semibold text-emerald-600 mt-0.5">₹{Number(room.monthly_fee).toLocaleString('en-IN')}/month</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <button 
+                        onClick={() => openEditModal(room)} 
+                        className="text-slate-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+                        title="Edit Room Details"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <span className="text-sm font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">{occupied}/{room.capacity}</span>
+                    </div>
+                  </div>
+                  <div className="p-5 flex-1 bg-slate-50/50">
+                    <div className="grid grid-cols-2 gap-3">
+                      {room.beds.map(bed => {
+                        // Note: Supabase nested array might be empty or missing depending on join config
+                        // Ensure student name resolves smoothly
+                        const occupants = bed.students || [];
+                        const occupantName = occupants.length > 0 ? occupants[0].full_name : null;
+                        
+                        return (
+                          <div key={bed.id}
+                            className={cn("p-3 rounded-lg border flex flex-col gap-1 transition-transform hover:scale-[1.02] cursor-pointer",
+                              bed.status === 'available' && "bg-white border-emerald-200 hover:border-emerald-300",
+                              bed.status === 'occupied' && "bg-blue-50 border-blue-200",
+                              bed.status === 'maintenance' && "bg-amber-50 border-amber-200"
+                            )}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-sm text-slate-700">{bed.bed_number}</span>
+                              <div className={cn("h-2 w-2 rounded-full",
+                                bed.status === 'available' ? "bg-emerald-500" : bed.status === 'occupied' ? "bg-blue-500" : "bg-amber-500")} />
+                            </div>
+                            <span className="text-xs truncate font-medium">
+                              {bed.status === 'occupied' 
+                                ? (occupantName ? <span className="text-blue-700">{occupantName}</span> : 'Occupied') 
+                                : <span className="text-slate-400 capitalize">{bed.status}</span>}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </AnimateView>
     </div>
   )
 }

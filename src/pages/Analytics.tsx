@@ -5,6 +5,8 @@ import { Sparkles, TrendingUp, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, getRevenueByMonth, getOccupancyByMonth, getDashboardStats } from '../lib/api'
 import toast from 'react-hot-toast'
+import { Skeleton } from '../components/Skeleton'
+import { AnimateView } from '../components/AnimateView'
 
 function fmt(n: number) {
   if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
@@ -53,14 +55,16 @@ export function Analytics() {
       {/* KPI Summary Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Students', value: loading ? '...' : String(stats.totalStudents) },
-          { label: 'Occupancy Rate', value: loading ? '...' : `${occupancyRate}%` },
-          { label: 'Monthly Revenue', value: loading ? '...' : fmt(stats.monthlyRevenue) },
-          { label: 'Overdue Fees', value: loading ? '...' : fmt(stats.overdueFees) },
+          { label: 'Total Students', value: String(stats.totalStudents) },
+          { label: 'Occupancy Rate', value: `${occupancyRate}%` },
+          { label: 'Monthly Revenue', value: fmt(stats.monthlyRevenue) },
+          { label: 'Overdue Fees', value: fmt(stats.overdueFees) },
         ].map((k, i) => (
           <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <p className="text-sm text-slate-500">{k.label}</p>
-            <h3 className={`text-2xl font-bold mt-1 ${loading ? 'text-slate-200 animate-pulse' : 'text-slate-900'}`}>{k.value}</h3>
+            <AnimateView isLoading={loading} fallback={<Skeleton className="h-8 w-20 mt-1 rounded" />}>
+              <h3 className="text-2xl font-bold mt-1 text-slate-900">{k.value}</h3>
+            </AnimateView>
           </div>
         ))}
       </div>
@@ -74,23 +78,32 @@ export function Analytics() {
               <p className="text-sm text-slate-500">By month (paid fees only)</p>
             </div>
           </div>
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center text-slate-300"><Loader2 className="animate-spin h-8 w-8" /></div>
-          ) : revenueData.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">No paid fees recorded yet.</div>
-          ) : (
-            <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => `₹${v / 1000}k`} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(v) => [fmt(Number(v)), 'Revenue']} />
-                  <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <AnimateView
+            isLoading={loading}
+            fallback={
+              <div className="flex-1 flex items-end gap-3 pt-6 pb-2">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <Skeleton key={i} className="w-1/6 rounded-t-sm" style={{ height: `${Math.random() * 60 + 20}%` }} />
+                ))}
+              </div>
+            }
+          >
+            {revenueData.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">No paid fees recorded yet.</div>
+            ) : (
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => `₹${v / 1000}k`} />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(v) => [fmt(Number(v)), 'Revenue']} />
+                    <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </AnimateView>
         </div>
 
         {/* AI Insights */}
@@ -135,9 +148,16 @@ export function Analytics() {
             <h2 className="text-lg font-bold text-slate-900">Bed Occupancy Rate</h2>
             <p className="text-sm text-slate-500">Live snapshot across months</p>
           </div>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-slate-300"><Loader2 className="animate-spin h-8 w-8" /></div>
-          ) : (
+          <AnimateView
+            isLoading={loading}
+            fallback={
+              <div className="h-[260px] w-full flex items-end gap-2 pt-10">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <Skeleton key={i} className="w-1/6 rounded-t-sm" style={{ height: `${Math.random() * 50 + 40}%` }} />
+                ))}
+              </div>
+            }
+          >
             <div className="h-[260px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={occupancyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -155,7 +175,7 @@ export function Analytics() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          )}
+          </AnimateView>
         </div>
       </div>
     </div>

@@ -27,7 +27,21 @@ const login = async (req, res) => {
         const user = users[0]
 
         const bcrypt = require('bcryptjs')
-        const passwordMatch = await bcrypt.compare(password, user.password)
+        let passwordMatch = false;
+
+        // Check if stored password is a bcrypt hash
+        if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+            passwordMatch = await bcrypt.compare(password, user.password);
+        } else {
+            // Legacy plain-text password fallback
+            if (password === user.password) {
+                passwordMatch = true;
+                // Auto-migrate to bcrypt for future logins
+                const newHash = await bcrypt.hash(password, 12);
+                await db.query('UPDATE users SET password = $1 WHERE id = $2', [newHash, user.id]);
+                console.log(`🔒 Auto-migrated password for user ${user.id} to bcrypt`);
+            }
+        }
 
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Invalid email or password' })

@@ -6,6 +6,8 @@ import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, getDashboardStats, getRevenueByMonth, getRoomsWithBeds } from '../lib/api'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { Skeleton } from '../components/Skeleton'
+import { AnimateView } from '../components/AnimateView'
 
 function fmt(n: number) {
   if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
@@ -41,10 +43,10 @@ export function Dashboard() {
   const occupancyRate = stats.totalBeds > 0 ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100) : 0
 
   const cards = [
-    { name: 'Total Students', value: loading ? '...' : String(stats.totalStudents), icon: Users, change: 'Registered residents', positive: true, color: 'bg-blue-50 text-blue-600' },
-    { name: 'Occupancy Rate', value: loading ? '...' : `${occupancyRate}%`, icon: Bed, change: `${stats.occupiedBeds} / ${stats.totalBeds} beds`, positive: true, color: 'bg-emerald-50 text-emerald-600' },
-    { name: 'Monthly Revenue', value: loading ? '...' : fmt(stats.monthlyRevenue), icon: TrendingUp, change: 'Collected this month', positive: true, color: 'bg-indigo-50 text-indigo-600' },
-    { name: 'Pending Fees', value: loading ? '...' : fmt(stats.pendingFees + stats.overdueFees), icon: CreditCard, change: `${fmt(stats.overdueFees)} overdue`, positive: false, color: 'bg-rose-50 text-rose-600' },
+    { name: 'Total Students', value: String(stats.totalStudents), icon: Users, change: 'Registered residents', positive: true, color: 'bg-blue-50 text-blue-600' },
+    { name: 'Occupancy Rate', value: `${occupancyRate}%`, icon: Bed, change: `${stats.occupiedBeds} / ${stats.totalBeds} beds`, positive: true, color: 'bg-emerald-50 text-emerald-600' },
+    { name: 'Monthly Revenue', value: fmt(stats.monthlyRevenue), icon: TrendingUp, change: 'Collected this month', positive: true, color: 'bg-indigo-50 text-indigo-600' },
+    { name: 'Pending Fees', value: fmt(stats.pendingFees + stats.overdueFees), icon: CreditCard, change: `${fmt(stats.overdueFees)} overdue`, positive: false, color: 'bg-rose-50 text-rose-600' },
   ]
 
   return (
@@ -92,7 +94,9 @@ export function Dashboard() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-slate-500">{stat.name}</p>
-                  <h3 className={`text-lg sm:text-2xl font-bold tracking-tight mt-0.5 sm:mt-1 ${loading ? 'animate-pulse text-slate-300' : 'text-slate-900'}`}>{stat.value}</h3>
+                  <AnimateView isLoading={loading} fallback={<Skeleton className="h-7 sm:h-8 w-24 mt-1 rounded" />}>
+                    <h3 className="text-lg sm:text-2xl font-bold tracking-tight mt-0.5 sm:mt-1 text-slate-900">{stat.value}</h3>
+                  </AnimateView>
                 </div>
               </div>
               <div className="mt-3 sm:mt-4 flex items-center gap-2 text-xs sm:text-sm relative z-10">
@@ -120,33 +124,43 @@ export function Dashboard() {
             )}
           </div>
           <div className="flex-1 p-4">
-            {loading ? (
-              <div className="h-full flex items-center justify-center animate-pulse">
-                <div className="h-32 w-full bg-slate-100 rounded-xl" />
-              </div>
-            ) : revenueData.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-                <TrendingUp className="w-10 h-10 opacity-30" />
-                <p className="text-sm">No revenue recorded yet. Mark fees as paid to see data.</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={8} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '12px' }}
-                    formatter={(v) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
-                  />
-                  <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#revGrad)" dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+            <AnimateView 
+              isLoading={loading}
+              fallback={
+                <div className="h-[260px] w-full flex items-end gap-2 px-4 pb-6 pt-10">
+                  <Skeleton className="w-1/6 h-[30%] rounded-t-sm" />
+                  <Skeleton className="w-1/6 h-[50%] rounded-t-sm" />
+                  <Skeleton className="w-1/6 h-[80%] rounded-t-sm" />
+                  <Skeleton className="w-1/6 h-[60%] rounded-t-sm" />
+                  <Skeleton className="w-1/6 h-[90%] rounded-t-sm" />
+                  <Skeleton className="w-1/6 h-[100%] rounded-t-sm" />
+                </div>
+              }
+            >
+              {revenueData.length === 0 ? (
+                <div className="h-[260px] flex flex-col items-center justify-center text-slate-400 gap-3">
+                  <TrendingUp className="w-10 h-10 opacity-30" />
+                  <p className="text-sm">No revenue recorded yet. Mark fees as paid to see data.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={8} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '12px' }}
+                      formatter={(v) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
+                    />
+                    <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#revGrad)" dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </AnimateView>
           </div>
         </div>
 
@@ -199,72 +213,98 @@ export function Dashboard() {
           </div>
         </div>
         <div className="p-6">
-          {loading ? (
-            <div className="h-32 flex items-center justify-center animate-pulse text-slate-400 gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin" /> Loading floors and rooms...
-            </div>
-          ) : rooms.length === 0 ? (
-            <div className="h-32 flex items-center justify-center flex-col text-slate-400 gap-2">
-               <Bed className="w-8 h-8 opacity-30" />
-               <p className="text-sm">No rooms configured. Add rooms to see the live status here.</p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {Object.entries(
-                rooms.reduce((acc, room) => {
-                  const floorName = room.floor ? room.floor.trim() : 'Unspecified Floor';
-                  if (!acc[floorName]) acc[floorName] = [];
-                  acc[floorName].push(room);
-                  return acc;
-                }, {} as Record<string, typeof rooms>)
-              ).map(([floor, floorRooms]) => (
-                <div key={floor} className="bg-white rounded-xl">
-                  <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
-                    <div className="h-8 px-3 bg-blue-50 text-blue-700 rounded-lg flex items-center font-bold text-sm tracking-wide uppercase border border-blue-100">
-                      {floor}
+          <AnimateView
+            isLoading={loading}
+            fallback={
+              <div className="space-y-8">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-white rounded-xl">
+                    <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
+                      <Skeleton className="h-8 w-32 rounded-lg" />
+                      <Skeleton className="h-4 w-16" />
                     </div>
-                    <span className="text-sm font-medium text-slate-400">{floorRooms.length} Rooms</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {[1, 2, 3, 4, 5, 6].map((j) => (
+                        <div key={j} className="border border-slate-200 rounded-xl p-3 shadow-sm bg-slate-50">
+                          <div className="flex justify-between items-center mb-3">
+                            <Skeleton className="h-4 w-16 rounded" />
+                            <Skeleton className="h-3 w-10 rounded" />
+                          </div>
+                          <div className="flex gap-1.5">
+                            {[1, 2, 3].map((b) => <Skeleton key={b} className="h-8 w-8 rounded-lg" />)}
+                          </div>
+                          <Skeleton className="mt-3 h-1.5 w-full rounded-full" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {floorRooms.map(room => (
-                      <div key={room.id} className="border border-slate-200 rounded-xl p-3 hover:border-blue-300 transition-colors bg-slate-50 shadow-sm relative group">
-                        <div className="flex justify-between items-center mb-3">
-                           <span className="font-bold text-slate-800 text-sm">Room {room.room_number}</span>
-                           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-white px-1.5 py-0.5 rounded border border-slate-100">{room.type}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {room.beds.sort((a, b) => a.bed_number.localeCompare(b.bed_number)).map(bed => (
-                            <div 
-                              key={bed.id} 
-                              title={`Bed ${bed.bed_number} - ${bed.status}`}
-                              className={`flex items-center justify-center h-7 w-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                                bed.status === 'available' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-500 group-hover:text-white cursor-help' : 
-                                bed.status === 'maintenance' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                'bg-slate-200 text-slate-400 border border-slate-300'
-                              }`}
-                            >
-                              {bed.bed_number.replace(/[^0-9]/g, '') || bed.bed_number.charAt(0)}
-                            </div>
-                          ))}
-                        </div>
-                        {/* Occupancy Progress bar underneath */}
-                        <div className="mt-3 w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
-                          {room.beds.map((bed, i) => (
-                             <div 
-                               key={bed.id} 
-                               className={`h-full flex-1 ${bed.status === 'available' ? 'bg-transparent' : bed.status === 'maintenance' ? 'bg-amber-400' : 'bg-slate-400'}`} 
-                               style={{ marginLeft: i > 0 ? '1px' : '0' }}
-                             />
-                          ))}
-                        </div>
+                ))}
+              </div>
+            }
+          >
+            {rooms.length === 0 ? (
+              <div className="h-32 flex items-center justify-center flex-col text-slate-400 gap-2">
+                 <Bed className="w-8 h-8 opacity-30" />
+                 <p className="text-sm">No rooms configured. Add rooms to see the live status here.</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {Object.entries(
+                  rooms.reduce((acc, room) => {
+                    const floorName = room.floor ? room.floor.trim() : 'Unspecified Floor';
+                    if (!acc[floorName]) acc[floorName] = [];
+                    acc[floorName].push(room);
+                    return acc;
+                  }, {} as Record<string, typeof rooms>)
+                ).map(([floor, floorRooms]) => (
+                  <div key={floor} className="bg-white rounded-xl">
+                    <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
+                      <div className="h-8 px-3 bg-blue-50 text-blue-700 rounded-lg flex items-center font-bold text-sm tracking-wide uppercase border border-blue-100">
+                        {floor}
                       </div>
-                    ))}
+                      <span className="text-sm font-medium text-slate-400">{floorRooms.length} Rooms</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {floorRooms.map((room: any) => (
+                        <div key={room.id} className="border border-slate-200 rounded-xl p-3 hover:border-blue-300 transition-colors bg-slate-50 shadow-sm relative group">
+                          <div className="flex justify-between items-center mb-3">
+                             <span className="font-bold text-slate-800 text-sm">Room {room.room_number}</span>
+                             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-white px-1.5 py-0.5 rounded border border-slate-100">{room.type}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {room.beds.sort((a: any, b: any) => a.bed_number.localeCompare(b.bed_number)).map((bed: any) => (
+                              <div 
+                                key={bed.id} 
+                                title={`Bed ${bed.bed_number} - ${bed.status}`}
+                                className={`flex items-center justify-center h-7 w-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                  bed.status === 'available' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-500 group-hover:text-white cursor-help' : 
+                                  bed.status === 'maintenance' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                  'bg-slate-200 text-slate-400 border border-slate-300'
+                                }`}
+                              >
+                                {bed.bed_number.replace(/[^0-9]/g, '') || bed.bed_number.charAt(0)}
+                              </div>
+                            ))}
+                          </div>
+                          {/* Occupancy Progress bar underneath */}
+                          <div className="mt-3 w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
+                            {room.beds.map((bed: any, i: number) => (
+                               <div 
+                                 key={bed.id} 
+                                 className={`h-full flex-1 ${bed.status === 'available' ? 'bg-transparent' : bed.status === 'maintenance' ? 'bg-amber-400' : 'bg-slate-400'}`} 
+                                 style={{ marginLeft: i > 0 ? '1px' : '0' }}
+                               />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </AnimateView>
         </div>
       </div>
     </div>

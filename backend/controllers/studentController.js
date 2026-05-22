@@ -15,7 +15,7 @@ async function getStudents(req, res) {
        FROM students s
        LEFT JOIN rooms r ON r.id = s.room_id
        LEFT JOIN beds  b ON b.id = s.bed_id
-       WHERE s.hostel_id = $1
+       WHERE s.hostel_id = $1 AND s.is_active = TRUE
        ORDER BY s.created_at DESC`,
       [hostelId]
     )
@@ -39,6 +39,45 @@ async function addStudent(req, res) {
   const conn = await pool.connect()
   try {
     await conn.query('BEGIN')
+
+    // ── CROSS-HOSTEL ADMISSION CHECK ──
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (phone && phone.trim()) {
+      conditions.push(`phone = $${paramIdx++}`);
+      values.push(phone.trim());
+    }
+    if (parent_phone && parent_phone.trim()) {
+      conditions.push(`parent_phone = $${paramIdx++}`);
+      values.push(parent_phone.trim());
+    }
+    if (email && email.trim()) {
+      conditions.push(`email = $${paramIdx++}`);
+      values.push(email.trim());
+    }
+    if (id_number && id_number.trim()) {
+      conditions.push(`id_number = $${paramIdx++}`);
+      values.push(id_number.trim());
+    }
+
+    if (conditions.length > 0) {
+      const checkQuery = `
+        SELECT id, hostel_id FROM students 
+        WHERE (${conditions.join(' OR ')}) 
+        AND is_active = TRUE
+        LIMIT 1
+      `;
+      const { rows: activeStudents } = await conn.query(checkQuery, values);
+      if (activeStudents.length > 0) {
+         await conn.query('ROLLBACK');
+         conn.release();
+         return res.status(400).json({ 
+           error: `Student details (email/phone/ID) already exist. The student must be deactivated (closed) in their current hostel before new admission.` 
+         });
+      }
+    }
 
     // Create user account for student if email provided
     let userId = null
@@ -122,7 +161,7 @@ async function updateStudent(req, res) {
   const fields = req.body
   const allowed = [
     'full_name', 'email', 'phone', 'parent_phone', 'id_number',
-    'college_name', 'branch', 'joining_date', 'room_id', 'bed_id', 'is_verified'
+    'college_name', 'branch', 'joining_date', 'room_id', 'bed_id', 'is_verified', 'is_active'
   ]
   const updates = Object.keys(fields).filter(k => allowed.includes(k))
   if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' })
@@ -133,8 +172,29 @@ async function updateStudent(req, res) {
     const vals = [...updates.map(k => fields[k]), id]
     // WHERE clause uses the next placeholder number
     const wherePlaceholder = `$${updates.length + 1}`
-    await pool.query(`UPDATE students SET ${setClause} WHERE id = ${wherePlaceholder}`, vals)
-    res.json({ success: true })
+    
+    const conn = await pool.connect()
+    try {
+      await conn.query('BEGIN')
+      await conn.query(`UPDATE students SET ${setClause} WHERE id = ${wherePlaceholder}`, vals)
+      
+      // If deactivated, free up the bed
+      if (fields.is_active === false || fields.is_active === 'false') {
+        const { rows: studentRows } = await conn.query('SELECT bed_id FROM students WHERE id = $1', [id])
+        if (studentRows[0]?.bed_id) {
+          await conn.query("UPDATE beds SET status = 'available' WHERE id = $1", [studentRows[0].bed_id])
+          await conn.query("UPDATE students SET bed_id = NULL, room_id = NULL WHERE id = $1", [id])
+        }
+      }
+      
+      await conn.query('COMMIT')
+      res.json({ success: true })
+    } catch (err) {
+      await conn.query('ROLLBACK')
+      throw err
+    } finally {
+      conn.release()
+    }
   } catch (err) {
     console.error('[updateStudent]', err)
     res.status(500).json({ error: 'Server error' })
@@ -144,16 +204,23 @@ async function updateStudent(req, res) {
 // DELETE /api/students/:id
 async function deleteStudent(req, res) {
   const { id } = req.params
+  const conn = await pool.connect()
   try {
-    const { rows: rows } = await pool.query('SELECT bed_id FROM students WHERE id = $1', [id])
+    await conn.query('BEGIN')
+    const { rows: rows } = await conn.query('SELECT bed_id FROM students WHERE id = $1 FOR UPDATE', [id])
     if (rows[0]?.bed_id) {
-      await pool.query("UPDATE beds SET status = 'available' WHERE id = $1", [rows[0].bed_id])
+      await conn.query("UPDATE beds SET status = 'available' WHERE id = $1", [rows[0].bed_id])
     }
-    await pool.query('DELETE FROM students WHERE id = $1', [id])
+    // Soft delete: set is_active to false and unassign room/bed
+    await conn.query('UPDATE students SET is_active = FALSE, room_id = NULL, bed_id = NULL WHERE id = $1', [id])
+    await conn.query('COMMIT')
     res.json({ success: true })
   } catch (err) {
+    await conn.query('ROLLBACK')
     console.error('[deleteStudent]', err)
     res.status(500).json({ error: 'Server error' })
+  } finally {
+    conn.release()
   }
 }
 
@@ -177,6 +244,41 @@ async function bulkAddStudents(req, res) {
 
       if (!full_name) {
         throw new Error('Student name is required for all records')
+      }
+
+      // ── CROSS-HOSTEL ADMISSION CHECK FOR BULK ──
+      const conditions = [];
+      const values = [];
+      let paramIdx = 1;
+
+      if (phone && phone.trim()) {
+        conditions.push(`phone = $${paramIdx++}`);
+        values.push(phone.trim());
+      }
+      if (parent_phone && parent_phone.trim()) {
+        conditions.push(`parent_phone = $${paramIdx++}`);
+        values.push(parent_phone.trim());
+      }
+      if (email && email.trim()) {
+        conditions.push(`email = $${paramIdx++}`);
+        values.push(email.trim());
+      }
+      if (id_number && id_number.trim()) {
+        conditions.push(`id_number = $${paramIdx++}`);
+        values.push(id_number.trim());
+      }
+
+      if (conditions.length > 0) {
+        const checkQuery = `
+          SELECT id FROM students 
+          WHERE (${conditions.join(' OR ')}) 
+          AND is_active = TRUE
+          LIMIT 1
+        `;
+        const { rows: activeStudents } = await conn.query(checkQuery, values);
+        if (activeStudents.length > 0) {
+           throw new Error(`Student ${full_name} details already exist. The student must be deactivated (closed) in their current hostel before new admission.`);
+        }
       }
 
       // 1. Find or create Room

@@ -4,7 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, MessageCircle, FileDown, CheckCircle2, Clock, AlertCircle, Loader2, X, RefreshCw } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
-import { getOrCreateHostel, getFees, processPayment, autoMarkOverdue, generateBulkFees } from '../lib/api'
+import { getOrCreateHostel, getFeesWithStudentDetails, bulkGenerateFees, markFeeAsPaid, checkTenantSubscription } from '../lib/api'
+import { Skeleton } from '../components/Skeleton'
+import { AnimateView } from '../components/AnimateView'
 import toast from 'react-hot-toast'
 
 function fmt(n: number) {
@@ -263,11 +265,47 @@ export function Fees() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64 gap-3 text-slate-400">
-            <Loader2 className="animate-spin h-5 w-5" /> Loading fee ledger...
-          </div>
-        ) : (
+        <AnimateView
+          isLoading={loading}
+          fallback={
+            <div className="overflow-x-auto min-h-[300px]">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-white border-b border-slate-200 text-slate-500 text-xs uppercase font-bold sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th className="px-6 py-4">Student & Details</th>
+                    <th className="px-6 py-4">Amount & Month</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <tr key={i}>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <Skeleton className="h-5 w-32 rounded" />
+                          <Skeleton className="h-3 w-16 rounded" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <Skeleton className="h-5 w-24 rounded" />
+                          <Skeleton className="h-3 w-20 rounded" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Skeleton className="h-8 w-24 rounded ml-auto" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          }
+        >
           <div className="overflow-x-auto min-h-[300px]">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-white border-b border-slate-200 text-slate-500 text-xs uppercase font-bold sticky top-0 z-10 shadow-sm">
@@ -348,7 +386,7 @@ export function Fees() {
               </tbody>
             </table>
           </div>
-        )}
+        </AnimateView>
       </div>
     </div>
   )

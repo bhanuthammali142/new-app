@@ -8,6 +8,9 @@ import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, getStudents, deleteStudent, exportStudentsCSV } from '../lib/api'
 import type { Student } from '../types'
 import toast from 'react-hot-toast'
+import { Skeleton } from '../components/Skeleton'
+import { AnimateView } from '../components/AnimateView'
+import toast from 'react-hot-toast'
 
 export function Students() {
   const { user } = useAuth()
@@ -232,18 +235,77 @@ export function Students() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-48 gap-3 text-slate-400">
-            <Loader2 className="animate-spin h-5 w-5" /><span>Loading students...</span>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
-            <p className="text-lg font-medium">{searchTerm ? 'No matches found' : 'No students yet'}</p>
-            <p className="text-sm">{!searchTerm && 'Click "Add Student" to get started.'}</p>
-          </div>
-        ) : (
-          <div className="md:overflow-x-auto">
-            {/* Mobile Cards View */}
+        <AnimateView
+          isLoading={loading}
+          fallback={
+            <div className="w-full">
+              {/* Mobile Skeleton */}
+              <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/30">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-32 rounded" />
+                        <Skeleton className="h-3 w-24 rounded" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                      <Skeleton className="h-8 w-full rounded" />
+                      <Skeleton className="h-8 w-full rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop Skeleton */}
+              <div className="hidden md:block w-full overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50/50 text-slate-500 uppercase text-xs font-semibold border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4">Student</th>
+                      <th className="px-6 py-4">College & Branch</th>
+                      <th className="px-6 py-4">Allocation</th>
+                      <th className="px-6 py-4">Join Date</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <tr key={i}>
+                        <td className="px-6 py-4 flex items-center gap-3">
+                          <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32 rounded" />
+                            <Skeleton className="h-3 w-24 rounded" />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-28 rounded" />
+                            <Skeleton className="h-3 w-20 rounded" />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-4 w-20 rounded" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                        <td className="px-6 py-4 text-right"><Skeleton className="h-6 w-8 rounded ml-auto" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        >
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
+              <p className="text-lg font-medium">{searchTerm ? 'No matches found' : 'No students yet'}</p>
+              <p className="text-sm">{!searchTerm && 'Click "Add Student" to get started.'}</p>
+            </div>
+          ) : (
+            <div className="md:overflow-x-auto">
+              {/* Mobile Cards View */}
             <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/30">
               {filtered.map((student) => (
                 <div key={student.id} onClick={() => setSelectedStudent(student)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3 cursor-pointer hover:border-blue-300 transition-colors">
@@ -345,6 +407,7 @@ export function Students() {
             </table>
           </div>
         )}
+        </AnimateView>
 
         <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
           <span>Showing {filtered.length} of {studentsData.length} students</span>
