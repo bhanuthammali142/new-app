@@ -3,6 +3,9 @@
 -- =============================================
 
 -- Clean up existing tables if running repeatedly
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS reward_points CASCADE;
+DROP TABLE IF EXISTS reward_leaderboard CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS platform_tickets CASCADE;
 DROP TABLE IF EXISTS platform_notifications CASCADE;
@@ -213,6 +216,46 @@ CREATE TABLE food_menus (
     hostel_id INT NOT NULL UNIQUE REFERENCES hostels(id) ON DELETE CASCADE,
     menu JSON,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- NOTIFICATIONS (In-app notifications)
+-- =============================================
+CREATE TABLE notifications (
+    id VARCHAR(36) PRIMARY KEY,
+    hostel_id INT REFERENCES hostels(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) REFERENCES students(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_notifications_student_id ON notifications(student_id);
+
+-- =============================================
+-- REWARD POINTS
+-- =============================================
+CREATE TABLE reward_points (
+    id VARCHAR(36) PRIMARY KEY,
+    hostel_id INT NOT NULL REFERENCES hostels(id),
+    student_id VARCHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    points INT NOT NULL DEFAULT 0,
+    reason VARCHAR(200),
+    type VARCHAR(50) CHECK (type IN ('earned','redeemed')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- REWARD LEADERBOARD
+-- =============================================
+CREATE TABLE reward_leaderboard (
+    hostel_id INT NOT NULL REFERENCES hostels(id),
+    student_id VARCHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    total_points INT DEFAULT 0,
+    rank INT,
+    period VARCHAR(20),
+    PRIMARY KEY (hostel_id, student_id, period)
 );
 
 -- =============================================

@@ -264,4 +264,113 @@ const onboardAdmin = async (req, res) => {
     }
 }
 
-module.exports = { getHostels, createHostel, updateHostel, createHostelWithOwner, onboardAdmin }
+const bulkCreateHostels = async (req, res) => {
+    const { hostels } = req.body
+    if (!hostels || !Array.isArray(hostels)) {
+        return res.status(400).json({ error: 'hostels array is required' })
+    }
+
+    const conn = await db.connect()
+    const results = []
+    const crypto = require('crypto')
+
+    try {
+        await conn.query('BEGIN')
+
+        for (const hostel of hostels) {
+            const {
+                owner_name, owner_email, owner_phone, owner_password,
+                hostel_name, hostel_code, address_line1,
+                city, state, pincode,
+                contact_email, contact_phone,
+                floors_count, rooms_per_floor, beds_per_room
+            } = hostel
+
+            if (!owner_name || !owner_email || !hostel_name) {
+                throw new Error(`Missing owner_name, owner_email, or hostel_name for "${hostel_name || 'unknown'}"`)
+            }
+
+            // Check if email already exists
+            const { rows: existing } = await conn.query('SELECT id FROM users WHERE email = $1', [owner_email])
+            if (existing.length > 0) {
+                throw new Error(`Owner email "${owner_email}" already exists in the system`)
+            }
+
+            const finalPassword = owner_password || 'Admin@123'
+            const hashedPassword = await bcrypt.hash(finalPassword, 12)
+
+            // 1. Create user
+            const { rows: userResult } = await conn.query(
+                'INSERT INTO users (email, password, role, is_active) VALUES ($1, $2, $3, $4) RETURNING id',
+                [owner_email, hashedPassword, 'admin', true]
+            )
+
+            // 2. Create owner
+            const { rows: ownerResult } = await conn.query(
+                'INSERT INTO hostel_owners (user_id, owner_name, owner_phone, owner_email) VALUES ($1, $2, $3, $4) RETURNING id',
+                [userResult[0].id, owner_name, owner_phone || '', owner_email]
+            )
+
+            // 3. Create hostel
+            const finalHostelCode = hostel_code || ('HSTL' + Math.floor(1000 + Math.random() * 9000))
+            const numFloors = Number(floors_count) || 1
+            const numRoomsPerFloor = Number(rooms_per_floor) || 5
+            const numBedsPerRoom = Number(beds_per_room) || 2
+            const totalRooms = numFloors * numRoomsPerFloor
+            const totalBeds = totalRooms * numBedsPerRoom
+
+            const { rows: hostelResult } = await conn.query(
+                `INSERT INTO hostels
+                   (owner_id, hostel_name, hostel_code, address_line1, city, state, pincode,
+                    phone, email, total_floors, total_rooms, total_beds)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                [
+                    ownerResult[0].id, hostel_name, finalHostelCode, address_line1 || 'Update Address',
+                    city || 'Unknown', state || 'Unknown', pincode || '000000',
+                    contact_phone || owner_phone || '', contact_email || owner_email,
+                    numFloors, totalRooms, totalBeds
+                ]
+            )
+
+            const hostelId = hostelResult[0].id
+
+            // 4. Provision rooms/beds
+            for (let f = 1; f <= numFloors; f++) {
+                const floorName = `Floor ${f}`
+                for (let r = 1; r <= numRoomsPerFloor; r++) {
+                    const roomId = crypto.randomUUID()
+                    const roomNumber = `${f}0${r}`
+                    await conn.query(
+                        `INSERT INTO rooms (id, hostel_id, room_number, floor, type, capacity, monthly_fee)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [roomId, hostelId, roomNumber, floorName, 'Non-AC', numBedsPerRoom, 5000]
+                    )
+
+                    for (let b = 1; b <= numBedsPerRoom; b++) {
+                        await conn.query(
+                            'INSERT INTO beds (id, hostel_id, room_id, bed_number, status) VALUES ($1, $2, $3, $4, $5)',
+                            [crypto.randomUUID(), hostelId, roomId, `B${b}`, 'available']
+                        )
+                    }
+                }
+            }
+
+            results.push({
+                hostel_name,
+                owner_email,
+                credentials: { email: owner_email, password: finalPassword }
+            })
+        }
+
+        await conn.query('COMMIT')
+        conn.release()
+        res.json({ success: true, message: `Successfully bulk created ${hostels.length} hostels`, data: results })
+    } catch (error) {
+        await conn.query('ROLLBACK')
+        conn.release()
+        console.error('bulkCreateHostels error:', error)
+        res.status(500).json({ error: error.message || 'Server error' })
+    }
+}
+
+module.exports = { getHostels, createHostel, updateHostel, createHostelWithOwner, onboardAdmin, bulkCreateHostels }

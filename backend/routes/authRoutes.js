@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { login, register, me, changePassword } = require('../controllers/authController')
+const { login, register, me, changePassword, updateProfile } = require('../controllers/authController')
 const { verifyToken } = require('../middleware/auth')
 
 // Public routes
@@ -10,6 +10,7 @@ router.post('/register', register)
 // Protected routes
 router.get('/me', verifyToken, me)
 router.put('/me', verifyToken, changePassword)
+router.put('/profile', verifyToken, updateProfile)
 
 // Test route to verify router is working
 router.get('/test', (req, res) => {

@@ -48,8 +48,8 @@ async function addStudent(req, res) {
       if (existing.length > 0) {
         userId = existing[0].id
       } else {
-        // Generate a readable temp password
-        const tempPassword = Math.random().toString(36).slice(2, 10) + 'Ab@1'
+        // Generate a readable secure temp password
+        const tempPassword = crypto.randomBytes(8).toString('hex').slice(0, 8) + 'Ab@1'
         const hash = await bcrypt.hash(tempPassword, 12)
 
         // FIXED: Do NOT pass id — let MySQL AUTO_INCREMENT assign it
@@ -157,4 +157,133 @@ async function deleteStudent(req, res) {
   }
 }
 
-module.exports = { getStudents, addStudent, updateStudent, deleteStudent }
+async function bulkAddStudents(req, res) {
+  const { students } = req.body
+  const hostelId = req.body.hostel_id || req.query.hostel_id || req.user.hostel_id
+  if (!hostelId) return res.status(400).json({ error: 'hostel_id is required' })
+  if (!students || !Array.isArray(students)) return res.status(400).json({ error: 'students array is required' })
+
+  const conn = await pool.connect()
+  const results = []
+  try {
+    await conn.query('BEGIN')
+
+    for (const student of students) {
+      const {
+        full_name, email, phone, parent_phone,
+        id_number, college_name, branch, joining_date,
+        room_number, bed_number
+      } = student
+
+      if (!full_name) {
+        throw new Error('Student name is required for all records')
+      }
+
+      // 1. Find or create Room
+      let roomId = null
+      const cleanRoomNo = room_number ? String(room_number).trim() : ''
+      if (cleanRoomNo) {
+        const { rows: roomRows } = await conn.query(
+          'SELECT id FROM rooms WHERE hostel_id = $1 AND room_number = $2',
+          [hostelId, cleanRoomNo]
+        )
+        if (roomRows.length > 0) {
+          roomId = roomRows[0].id
+        } else {
+          roomId = crypto.randomUUID()
+          await conn.query(
+            `INSERT INTO rooms (id, hostel_id, room_number, floor, type, capacity, monthly_fee)
+             VALUES ($1, $2, $3, 'Ground Floor', 'Non-AC', 2, 5000)`,
+            [roomId, hostelId, cleanRoomNo]
+          )
+        }
+      }
+
+      // 2. Find or create Bed
+      let bedId = null
+      const cleanBedNo = bed_number ? String(bed_number).trim() : 'B1'
+      if (roomId) {
+        const { rows: bedRows } = await conn.query(
+          'SELECT id FROM beds WHERE room_id = $1 AND bed_number = $2',
+          [roomId, cleanBedNo]
+        )
+        if (bedRows.length > 0) {
+          bedId = bedRows[0].id
+        } else {
+          bedId = crypto.randomUUID()
+          await conn.query(
+            'INSERT INTO beds (id, hostel_id, room_id, bed_number, status) VALUES ($1, $2, $3, $4, $5)',
+            [bedId, hostelId, roomId, cleanBedNo, 'available']
+          )
+        }
+      }
+
+      // 3. Create user login if email provided
+      let userId = null
+      if (email) {
+        const { rows: existing } = await conn.query('SELECT id FROM users WHERE email = $1', [email])
+        if (existing.length > 0) {
+          userId = existing[0].id
+        } else {
+          const tempPassword = 'Student@123'
+          const hash = await bcrypt.hash(tempPassword, 12)
+          const { rows: userResult } = await conn.query(
+            'INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING id',
+            [email, hash, 'student']
+          )
+          userId = userResult[0].id
+        }
+      }
+
+      // 4. Create Student
+      const studentId = crypto.randomUUID()
+      const finalJoiningDate = joining_date ? new Date(joining_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+      await conn.query(
+        `INSERT INTO students
+         (id, hostel_id, user_id, room_id, bed_id, full_name, email, phone, parent_phone,
+          id_number, college_name, branch, joining_date, is_verified, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        [
+          studentId, hostelId, userId, roomId, bedId,
+          full_name, email || null, phone || null, parent_phone || null,
+          id_number || null, college_name || null, branch || null, finalJoiningDate,
+          true, true
+        ]
+      )
+
+      // 5. Mark Bed occupied
+      if (bedId) {
+        await conn.query("UPDATE beds SET status = 'occupied' WHERE id = $1", [bedId])
+      }
+
+      // 6. Auto-generate current month fee record
+      if (roomId) {
+        const { rows: roomRows } = await conn.query('SELECT monthly_fee FROM rooms WHERE id = $1', [roomId])
+        const fee = Number(roomRows[0]?.monthly_fee) || 5000
+        if (fee > 0) {
+          const now = new Date()
+          const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0]
+          const dueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 5)).toISOString().split('T')[0]
+          await conn.query(
+            `INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [crypto.randomUUID(), hostelId, studentId, fee, fee, monthStart, dueDate, 'pending']
+          )
+        }
+      }
+
+      results.push({ full_name, email, room_number: cleanRoomNo, bed_number: cleanBedNo })
+    }
+
+    await conn.query('COMMIT')
+    conn.release()
+    res.json({ success: true, message: `Successfully bulk imported ${students.length} students`, data: results })
+  } catch (error) {
+    await conn.query('ROLLBACK')
+    conn.release()
+    console.error('bulkAddStudents error:', error)
+    res.status(500).json({ error: error.message || 'Server error' })
+  }
+}
+
+module.exports = { getStudents, addStudent, updateStudent, deleteStudent, bulkAddStudents }

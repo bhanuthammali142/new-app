@@ -26,18 +26,8 @@ const login = async (req, res) => {
 
         const user = users[0]
 
-        // Plain-text password check (matching schema seed; students use bcrypt — handled below)
-        let passwordMatch = (password === user.password)
-
-        // Also try bcrypt in case the password was hashed (student accounts)
-        if (!passwordMatch) {
-            try {
-                const bcrypt = require('bcryptjs')
-                passwordMatch = await bcrypt.compare(password, user.password)
-            } catch (_) {
-                // bcrypt compare failed — not a hashed password
-            }
-        }
+        const bcrypt = require('bcryptjs')
+        const passwordMatch = await bcrypt.compare(password, user.password)
 
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Invalid email or password' })
@@ -180,29 +170,72 @@ const me = async (req, res) => {
 
         const user = users[0]
         let name = ''
+        let phone = ''
         let hostelId = null
 
         if (user.role === 'super_admin') {
-            const { rows: admin } = await db.query('SELECT name FROM super_admins WHERE user_id = $1', [userId])
+            const { rows: admin } = await db.query('SELECT name, phone FROM super_admins WHERE user_id = $1', [userId])
             name = admin[0]?.name || 'Super Admin'
+            phone = admin[0]?.phone || ''
         } else if (user.role === 'admin') {
-            const { rows: owner } = await db.query('SELECT owner_name AS name FROM hostel_owners WHERE user_id = $1', [userId])
+            const { rows: owner } = await db.query('SELECT owner_name AS name, owner_phone AS phone FROM hostel_owners WHERE user_id = $1', [userId])
             name = owner[0]?.name || 'Hostel Owner'
+            phone = owner[0]?.phone || ''
             const { rows: hostelRows } = await db.query(
                 'SELECT h.id AS hostel_id FROM hostels h JOIN hostel_owners ho ON ho.id = h.owner_id WHERE ho.user_id = $1 LIMIT 1',
                 [userId]
             )
             hostelId = hostelRows[0]?.hostel_id ? String(hostelRows[0].hostel_id) : null
         } else {
-            const { rows: student } = await db.query('SELECT full_name AS name, hostel_id FROM students WHERE user_id = $1', [userId])
+            const { rows: student } = await db.query('SELECT full_name AS name, phone, hostel_id FROM students WHERE user_id = $1', [userId])
             name = student[0]?.name || 'Student'
+            phone = student[0]?.phone || ''
             hostelId = student[0]?.hostel_id ? String(student[0].hostel_id) : null
         }
 
-        res.json({ id: user.id, email: user.email, role: user.role, name, hostel_id: hostelId })
+        res.json({ id: user.id, email: user.email, role: user.role, name, phone, hostel_id: hostelId })
     } catch (error) {
         console.error('Me error:', error)
         res.status(500).json({ error: 'Server error' })
+    }
+}
+
+const updateProfile = async (req, res) => {
+    const { name, phone, email } = req.body
+    const userId = req.user.id
+    if (!name) return res.status(400).json({ error: 'Name is required' })
+
+    try {
+        if (req.user.role === 'super_admin') {
+            await db.query(
+                'UPDATE super_admins SET name = $1, phone = $2 WHERE user_id = $3',
+                [name, phone || '', userId]
+            )
+        } else if (req.user.role === 'admin') {
+            await db.query(
+                'UPDATE hostel_owners SET owner_name = $1, owner_phone = $2, owner_email = $3 WHERE user_id = $4',
+                [name, phone || '', email || '', userId]
+            )
+        } else if (req.user.role === 'student') {
+            await db.query(
+                'UPDATE students SET full_name = $1, phone = $2, email = $3 WHERE user_id = $4',
+                [name, phone || '', email || '', userId]
+            )
+        }
+
+        if (email) {
+            // Check if email is already taken by another user
+            const { rows: existingUsers } = await db.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [email, userId])
+            if (existingUsers.length > 0) {
+                return res.status(400).json({ error: 'Email is already in use by another account' })
+            }
+            await db.query('UPDATE users SET email = $1 WHERE id = $2', [email, userId])
+        }
+
+        res.json({ success: true, message: 'Profile updated successfully' })
+    } catch (error) {
+        console.error('updateProfile error:', error)
+        res.status(500).json({ error: error.message || 'Server error' })
     }
 }
 
@@ -220,4 +253,4 @@ const changePassword = async (req, res) => {
     }
 }
 
-module.exports = { login, register, me, changePassword }
+module.exports = { login, register, me, changePassword, updateProfile }

@@ -242,7 +242,7 @@ export function StudentDashboard() {
           <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-indigo-600" /> Quick Actions
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'View Full Fee History', path: '/student/fees', icon: Wallet, color: 'bg-blue-600' },
               { label: "Today's Food Menu", path: '/student/food', icon: UtensilsCrossed, color: 'bg-emerald-600' },

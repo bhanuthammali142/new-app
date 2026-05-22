@@ -2,7 +2,7 @@
  * src/pages/student/StudentRewards.tsx
  * Student rewards and points leaderboard page
  */
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Zap, TrendingUp, Gift, Award, Loader2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import toast from 'react-hot-toast'
@@ -21,7 +21,7 @@ export function StudentRewards() {
   const [redeeming, setRedeeming] = useState<string | null>(null)
 
   // Fetch student's reward points
-  const { data: rewardData, isLoading } = useQuery({
+  const { data: rewardData } = useQuery({
     queryKey: ['student-rewards', studentData?.id],
     queryFn: async () => {
       if (!studentData?.id) return null

@@ -1,13 +1,15 @@
 // HostelOS API Client
 // Backend: https://hostelos-yis2.onrender.com
 
-const BASE_URL = 'https://hostelos-yis2.onrender.com'
+const envApiUrl = import.meta.env.VITE_API_URL || 'https://hostelos-yis2.onrender.com/api'
+const BASE_URL = envApiUrl.replace(/\/api$/, '')
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface ApiUser {
   id: number
   name: string
   email: string
+  phone?: string
   role: 'super_admin' | 'admin' | 'student'
   hostel_id: string | null
 }
@@ -118,6 +120,12 @@ export const apiAuth = {
       method: 'PUT',
       body: JSON.stringify({ newPassword }),
     }),
+
+  updateProfile: (name: string, phone: string, email: string) =>
+    request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ name, phone, email }),
+    }),
 }
 
 // ── Hostels ──────────────────────────────────────────────────────────────────
@@ -142,6 +150,9 @@ export const apiHostels = {
 
   onboardAdmin: (data: unknown) =>
     request('/api/hostels/onboard', { method: 'POST', body: JSON.stringify(data) }),
+
+  bulkCreate: (hostels: unknown[]) =>
+    request('/api/hostels/bulk', { method: 'POST', body: JSON.stringify({ hostels }) }),
 }
 
 // ── Students ─────────────────────────────────────────────────────────────────
@@ -157,6 +168,9 @@ export const apiStudents = {
 
   delete: (id: string) =>
     request(`/api/students/${id}`, { method: 'DELETE' }),
+
+  bulkCreate: (students: unknown[], hostelId?: string) =>
+    request('/api/students/bulk', { method: 'POST', body: JSON.stringify({ students, hostel_id: hostelId }) }),
 }
 
 // ── Rooms ─────────────────────────────────────────────────────────────────────

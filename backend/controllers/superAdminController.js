@@ -87,7 +87,7 @@ const getAllUsers = async (req, res) => {
             LEFT JOIN super_admins sa ON sa.user_id = u.id
             LEFT JOIN hostel_owners ho ON ho.user_id = u.id
             LEFT JOIN hostels h ON h.owner_id = ho.id
-            WHERE 1=1
+            WHERE u.role IN ('super_admin', 'admin')
         `;
         const params = [];
 
@@ -131,7 +131,7 @@ const changeUserRole = async (req, res) => {
     try {
         const { id } = req.params;
         const { role } = req.body;
-        if (!['super_admin', 'admin', 'student'].includes(role)) {
+        if (!['super_admin', 'admin'].includes(role)) {
             return res.status(400).json({ success: false, error: 'Invalid role' });
         }
         await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);

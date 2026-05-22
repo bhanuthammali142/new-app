@@ -18,7 +18,9 @@ const { getRooms, addRoom, updateRoom, deleteRoom } = require('../controllers/ro
 const { getHostels, createHostel, updateHostel, createHostelWithOwner } = require('../controllers/hostelController')
 
 // All routes require auth
-router.use(verifyToken)
+const tenantGuard = require('../middleware/tenantGuard');
+router.use(verifyToken);
+router.use(tenantGuard);
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', getDashboardStats)

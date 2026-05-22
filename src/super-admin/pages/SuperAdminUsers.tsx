@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Users, Search, Filter, ShieldCheck, Building2, GraduationCap,
+  Users, Search, Filter, ShieldCheck, Building2,
   ToggleLeft, ToggleRight, KeyRound, ChevronDown, Loader2,
   UserCheck, UserX, RefreshCw, Crown, Eye, EyeOff
 } from 'lucide-react'
@@ -12,7 +12,6 @@ import toast from 'react-hot-toast'
 const ROLE_META = {
   super_admin: { label: 'Super Admin', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Crown },
   admin:       { label: 'Admin',       color: 'bg-blue-100 text-blue-700 border-blue-200',     icon: Building2 },
-  student:     { label: 'Student',     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: GraduationCap },
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -130,7 +129,6 @@ export function SuperAdminUsers() {
           <option value="">All Roles</option>
           <option value="super_admin">Super Admin</option>
           <option value="admin">Admin</option>
-          <option value="student">Student</option>
         </select>
         <select
           value={statusFilter}
@@ -144,11 +142,12 @@ export function SuperAdminUsers() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
           { label: 'Total Users', value: users.length, color: 'text-slate-900' },
           { label: 'Super Admins', value: users.filter(u => u.role === 'super_admin').length, color: 'text-purple-600' },
           { label: 'Admins', value: users.filter(u => u.role === 'admin').length, color: 'text-blue-600' },
+          { label: 'Active', value: users.filter(u => u.is_active).length, color: 'text-emerald-600' },
           { label: 'Suspended', value: users.filter(u => !u.is_active).length, color: 'text-rose-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm text-center">

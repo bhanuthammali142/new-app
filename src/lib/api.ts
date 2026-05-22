@@ -12,15 +12,40 @@ import {
 // ─── HOSTEL ──────────────────────────────────────────────────────────────────
 
 export async function getOrCreateHostel(userId: string, hostelId?: string) {
-  // With MySQL backend, hostel is fetched by the backend via token
+  // With MySQL/PostgreSQL backend, hostel is fetched by the backend via token
   const { apiHostels } = await import('./api-client')
   const hostels = await apiHostels.getAll()
-  return (hostels[0] as any) || null
+  const raw = hostels[0]
+  if (!raw) return null
+  return {
+    id: String(raw.id),
+    owner_id: String(raw.owner_id),
+    name: raw.hostel_name ?? '',
+    address: raw.address_line1 ?? '',
+    contact_phone: raw.phone ?? '',
+    contact_email: raw.email ?? '',
+    created_at: raw.created_at ?? '',
+  }
 }
 
 export async function updateHostel(hostelId: string, payload: any) {
   const { apiHostels } = await import('./api-client')
-  return apiHostels.update(hostelId, payload)
+  const dbPayload: any = {}
+  if ('name' in payload) dbPayload.hostel_name = payload.name
+  if ('address' in payload) dbPayload.address_line1 = payload.address
+  if ('contact_phone' in payload) dbPayload.phone = payload.contact_phone
+  if ('contact_email' in payload) dbPayload.email = payload.contact_email
+  return apiHostels.update(hostelId, dbPayload)
+}
+
+export async function bulkCreateHostels(hostels: any[]) {
+  const { apiHostels } = await import('./api-client')
+  return apiHostels.bulkCreate(hostels)
+}
+
+export async function updateProfile(name: string, phone: string, email: string) {
+  const { apiAuth } = await import('./api-client')
+  return apiAuth.updateProfile(name, phone, email)
 }
 
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
@@ -40,6 +65,10 @@ export async function updateStudent(id: string, payload: any) {
 
 export async function deleteStudent(id: string) {
   return apiStudents.delete(id)
+}
+
+export async function bulkAddStudents(students: any[], hostelId?: string) {
+  return apiStudents.bulkCreate(students, hostelId)
 }
 
 // ─── ROOMS + BEDS ────────────────────────────────────────────────────────────

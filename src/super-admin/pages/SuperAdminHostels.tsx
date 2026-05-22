@@ -7,9 +7,10 @@
  * - Added safe array operations
  */
 import React, { useEffect, useState } from 'react'
-import { Building2, Plus, Search, ShieldCheck, RefreshCw, Eye, X, MapPin, Phone, Mail, Calendar, Hash } from 'lucide-react'
+import { Building2, Plus, Search, ShieldCheck, RefreshCw, Eye, X, MapPin, Phone, Mail, Calendar, Hash, Upload } from 'lucide-react'
 import { apiHostels } from '../../lib/api-client'
 import { AddHostelModal } from '../components/AddHostelModal'
+import { ImportHostelsModal } from '../components/ImportHostelsModal'
 import toast from 'react-hot-toast'
 
 export function SuperAdminHostels() {
@@ -18,6 +19,7 @@ export function SuperAdminHostels() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [viewHostel, setViewHostel] = useState<any | null>(null)
 
   const load = async () => {
@@ -104,6 +106,12 @@ export function SuperAdminHostels() {
         <div className="flex gap-2">
           <button onClick={load} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition">
             <RefreshCw className="h-4 w-4 text-slate-500" />
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-[0.98]"
+          >
+            <Upload className="h-4 w-4" /> Bulk Import
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -251,6 +259,13 @@ export function SuperAdminHostels() {
         <AddHostelModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => { load(); setShowAddModal(false) }}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportHostelsModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => { load(); setShowImportModal(false) }}
         />
       )}
 

@@ -3,7 +3,9 @@ const router  = express.Router()
 const { getRooms, addRoom, updateRoom, deleteRoom } = require('../controllers/roomController')
 const { verifyToken, checkRole } = require('../middleware/auth')
 
-router.use(verifyToken)
+const tenantGuard = require('../middleware/tenantGuard');
+router.use(verifyToken);
+router.use(tenantGuard);
 
 router.get('/',     getRooms)
 router.post('/',    checkRole('admin','super_admin'), addRoom)

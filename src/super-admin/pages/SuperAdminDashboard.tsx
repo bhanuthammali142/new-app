@@ -40,7 +40,7 @@ export function SuperAdminDashboard() {
           <h1 className="text-3xl font-black text-slate-900">Platform Command Center</h1>
           <p className="text-slate-500 mt-1">Monitor and manage all HostelOS tenants from one dashboard.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-0">
           <EdgeFunctionStatus />
           <button
             onClick={() => refetch()}

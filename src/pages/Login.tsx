@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
-const BASE_URL = 'https://hostelos-yis2.onrender.com'
+const envApiUrl = import.meta.env.VITE_API_URL || 'https://hostelos-yis2.onrender.com/api'
+const BASE_URL = envApiUrl.replace(/\/api$/, '')
 
 export function Login() {
   const [email, setEmail] = useState('admin@hostel.com')

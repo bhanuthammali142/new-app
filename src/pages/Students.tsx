@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Filter, MoreVertical, FileText, Trash2, Loader2, Eye, X, CheckCircle2, AlertCircle, Building2, Phone, Calendar, CreditCard, ImageOff } from 'lucide-react'
+import { Plus, Search, Filter, MoreVertical, FileText, Trash2, Loader2, Eye, X, CheckCircle2, AlertCircle, Building2, Phone, Calendar, CreditCard, ImageOff, Upload } from 'lucide-react'
 import { AddStudentModal } from '../components/AddStudentModal'
+import { ImportStudentsModal } from '../components/ImportStudentsModal'
 import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, getStudents, deleteStudent, exportStudentsCSV } from '../lib/api'
 import type { Student } from '../types'
@@ -14,6 +15,7 @@ export function Students() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterVerified, setFilterVerified] = useState<'all' | 'verified' | 'unverified'>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
 
@@ -78,6 +80,13 @@ export function Students() {
         hostelId={hostelId}
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => { setIsModalOpen(false); queryClient.invalidateQueries({ queryKey: ['students', hostelId] }) }}
+      />
+
+      <ImportStudentsModal
+        isOpen={isImportModalOpen}
+        hostelId={hostelId}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => { setIsImportModalOpen(false); queryClient.invalidateQueries({ queryKey: ['students', hostelId] }) }}
       />
 
       {/* Student Profile Drawer */}
@@ -181,9 +190,17 @@ export function Students() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Students</h1>
           <p className="text-slate-500 mt-1">Manage admissions, room allocations and records.</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" />Add Student
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center justify-center gap-2 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 active:scale-[0.98] transition-all"
+          >
+            <Upload className="h-4 w-4" /> Import Bulk
+          </button>
+          <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="h-4 w-4" />Add Student
+          </button>
+        </div>
       </div>
 
       <div className="card-premium">

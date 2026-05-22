@@ -369,7 +369,7 @@ export function AddHostelModal({
                 </div>
                 <div className="p-3 space-y-2">
                   {floor.rooms.map((room, ri) => (
-                    <div key={ri} className="grid grid-cols-4 gap-2 items-end bg-white border border-slate-100 rounded-xl px-3 py-2.5">
+                    <div key={ri} className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-2 items-end bg-white border border-slate-100 rounded-xl px-3 py-2.5">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Room No.</p>
                         <input

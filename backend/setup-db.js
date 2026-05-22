@@ -8,9 +8,10 @@ require('dotenv').config();
 async function setupDatabase() {
   try {
     console.log('Connecting to PostgreSQL...');
+    const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1');
     const client = new Client({
       connectionString: process.env.DATABASE_URL,
-      ssl: {
+      ssl: isLocal ? false : {
         rejectUnauthorized: false
       }
     });

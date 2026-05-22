@@ -2,26 +2,11 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AdminSidebar } from './components/AdminSidebar'
-import { AdminOnboardingWizard } from './components/AdminOnboardingWizard'
 import { Menu, X } from 'lucide-react'
 
 export function AdminLayout() {
-  const [showWizard, setShowWizard] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
-
-  useEffect(() => {
-    // Simulate first login detection with localStorage
-    if (!localStorage.getItem('admin_onboarded')) {
-      setShowWizard(true)
-    }
-  }, [])
-
-  const handleComplete = () => {
-    localStorage.setItem('admin_onboarded', '1')
-    setShowWizard(false)
-    window.location.reload()
-  }
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -75,7 +60,6 @@ export function AdminLayout() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[1440px] mx-auto p-4 sm:p-6 lg:p-8">
-            {showWizard && <AdminOnboardingWizard onComplete={handleComplete} />}
             <Outlet />
           </div>
         </main>

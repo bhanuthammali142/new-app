@@ -93,6 +93,11 @@ async function processPayment(req, res) {
     const fee = feeRows[0]
     if (!fee) return res.status(404).json({ error: 'Fee not found' })
 
+    // Validate permission
+    if (req.user.role !== 'super_admin' && req.user.hostel_id !== String(fee.hostel_id)) {
+        return res.status(403).json({ error: 'Access denied to this fee' })
+    }
+
     const newPaidAmount = Number(fee.paid_amount) + Number(amount_paid)
     const newDueAmount  = Number(fee.amount) - newPaidAmount
     let newStatus = 'pending'

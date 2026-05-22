@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { apiAuth, getToken, setStoredUser } from '../lib/api-client'
+import { apiAuth, setToken, setStoredUser } from '../lib/api-client'
 import toast from 'react-hot-toast'
 import { ShieldCheck, Loader2, Eye, EyeOff } from 'lucide-react'
 

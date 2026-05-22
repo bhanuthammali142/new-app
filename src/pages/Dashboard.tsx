@@ -226,7 +226,7 @@ export function Dashboard() {
                     <span className="text-sm font-medium text-slate-400">{floorRooms.length} Rooms</span>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {floorRooms.map(room => (
                       <div key={room.id} className="border border-slate-200 rounded-xl p-3 hover:border-blue-300 transition-colors bg-slate-50 shadow-sm relative group">
                         <div className="flex justify-between items-center mb-3">
