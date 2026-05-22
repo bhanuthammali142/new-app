@@ -6,7 +6,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, Building2, Users, DollarSign, TrendingUp, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { apiHostels } from '../../lib/api-client'
+import { apiSuperAdmin } from '../../lib/api-client'
 import { EdgeFunctionStatus } from '../../components/EdgeFunctionStatus'
 import toast from 'react-hot-toast'
 
@@ -17,7 +17,8 @@ export function SuperAdminDashboard() {
     queryKey: ['super-admin-hostels'],
     queryFn: async () => {
       try {
-        return await apiHostels.getAll()
+        const res = await apiSuperAdmin.getHostels() as any
+        return res.data || res || []
       } catch (err) {
         toast.error('Failed to load platform data')
         return []
@@ -120,10 +121,10 @@ export function SuperAdminDashboard() {
               <div key={hostel.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition">
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm">
-                    {hostel.name?.charAt(0) || '?'}
+                    {hostel.hostel_name?.charAt(0) || '?'}
                   </div>
                   <div>
-                    <p className="font-bold text-slate-900 text-sm">{hostel.name}</p>
+                    <p className="font-bold text-slate-900 text-sm">{hostel.hostel_name}</p>
                     <p className="text-xs text-slate-400">{hostel.owner_email || hostel.contact_email || ''}</p>
                   </div>
                 </div>
