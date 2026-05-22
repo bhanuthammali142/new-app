@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getMySubscription, createCheckoutSession, verifySubscriptionPayment } = require('../controllers/subscriptionController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/auth');
 const tenantGuard = require('../middleware/tenantGuard');
 
 // Base path: /api/billing
