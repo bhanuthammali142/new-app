@@ -188,7 +188,7 @@ const getAllHostels = async (req, res) => {
             query += ` AND (h.hostel_name ILIKE $${params.length + 1} OR h.city ILIKE $${params.length + 2} OR ho.owner_name ILIKE $${params.length + 3})`;
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
-        query += ' GROUP BY h.id ORDER BY h.created_at DESC';
+        query += ' GROUP BY h.id, ho.owner_name, ho.owner_email, ho.owner_phone ORDER BY h.created_at DESC';
 
         const { rows: hostels } = await db.query(query, params);
         res.json({ success: true, data: hostels });
