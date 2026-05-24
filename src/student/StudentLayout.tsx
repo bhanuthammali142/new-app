@@ -16,8 +16,10 @@ import {
   EyeOff,
   Lock,
   Loader2,
+  Zap,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { NotificationBell } from '../components/NotificationBell'
 
 import { cn } from '../lib/utils'
 import toast from 'react-hot-toast'
@@ -37,6 +39,7 @@ const NAV = [
   { name: 'Complaints',  href: '/student/complaints',     icon: MessageSquareWarning, end: false },
   { name: 'Notices',     href: '/student/announcements',  icon: Bell,                 end: false },
   { name: 'Food Menu',   href: '/student/food',           icon: UtensilsCrossed,      end: false },
+  { name: 'Rewards',     href: '/student/rewards',        icon: Zap,                  end: false },
   { name: 'Profile',     href: '/student/profile',        icon: User,                 end: false },
 ]
 
@@ -263,6 +266,7 @@ export function StudentLayout() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="hidden sm:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
               <ShieldCheck className="h-3 w-3 text-emerald-600" />
               <span className="text-[10px] font-bold text-emerald-700">

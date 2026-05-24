@@ -5,7 +5,7 @@ const auditLog = require('../middleware/auditLogger')
 
 // Import real controllers
 const {
-  getDashboardStats, getRevenueByMonth,
+  getDashboardStats, getRevenueByMonth, getOccupancyByMonth,
   getComplaints, addComplaint, updateComplaint,
   getAnnouncements, addAnnouncement, deleteAnnouncement,
   getAttendance, markAttendance,
@@ -25,6 +25,7 @@ router.use(tenantGuard);
 // ── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', getDashboardStats)
 router.get('/dashboard/revenue', getRevenueByMonth)
+router.get('/dashboard/occupancy', getOccupancyByMonth)
 
 // ── Complaints ───────────────────────────────────────────────────────────────
 router.get('/complaints', getComplaints)
@@ -63,6 +64,26 @@ router.get('/rooms', getRooms)
 router.post('/rooms', auditLog('ADD_ROOM', 'room'), addRoom)
 router.put('/rooms/:id', updateRoom)
 router.delete('/rooms/:id', deleteRoom)
+
+// ── Rewards ─────────────────────────────────────────────────────────────────
+const { getLeaderboard, getStudentRewards, awardPoints, redeemReward } = require('../controllers/rewardController')
+router.get('/rewards/leaderboard', getLeaderboard)
+router.get('/rewards/student/:studentId', getStudentRewards)
+router.post('/rewards/award', auditLog('AWARD_POINTS', 'reward'), awardPoints)
+router.post('/rewards/redeem', auditLog('REDEEM_REWARD', 'reward'), redeemReward)
+
+// ── Payments ────────────────────────────────────────────────────────────────
+const { createOrder, verifyPayment, getPaymentHistory } = require('../controllers/paymentController')
+router.post('/payments/create-order', createOrder)
+router.post('/payments/verify-payment', verifyPayment)
+router.get('/payments/history', getPaymentHistory)
+
+// ── Notifications ───────────────────────────────────────────────────────────
+const { getNotifications, markAsRead, markAllAsRead, getUnreadCount } = require('../controllers/notificationController')
+router.get('/notifications', getNotifications)
+router.get('/notifications/unread-count', getUnreadCount)
+router.patch('/notifications/read-all', markAllAsRead)
+router.patch('/notifications/:id/read', markAsRead)
 
 // Test route
 router.get('/test', (req, res) => res.json({ message: 'Misc routes working!' }))

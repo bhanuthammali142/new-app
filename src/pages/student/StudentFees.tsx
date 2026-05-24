@@ -5,8 +5,9 @@
 import React, { useEffect, useState } from 'react'
 import { Wallet, Clock, CheckCircle2, AlertCircle, FileDown, Loader2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { apiFees } from '../../lib/api-client'
+import { apiFees, apiPayments } from '../../lib/api-client'
 import { cn } from '../../lib/utils'
+import { loadRazorpayScript, openRazorpayCheckout } from '../../lib/razorpay'
 import toast from 'react-hot-toast'
 
 function fmt(n: number) {
@@ -17,6 +18,7 @@ export function StudentFees() {
   const { studentData } = useAuth()
   const [fees, setFees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [paying, setPaying] = useState<string | null>(null) // stores fee.id being paid
 
   useEffect(() => {
     if (!studentData?.id) return
@@ -27,12 +29,73 @@ export function StudentFees() {
   }, [studentData])
 
   const totalDue = fees.reduce((sum, f) => sum + Number(f.due_amount || 0), 0)
+  const firstPendingFee = fees.find(f => f.status === 'pending' || f.status === 'overdue' || f.status === 'partial')
 
-  const handlePayNow = () => {
-    toast('Online payment not configured. Please pay at the hostel office.', {
-      icon: '⚠️',
-      duration: 5000,
-    })
+  const handlePayNow = async (feeId: string, amount: number) => {
+    if (!studentData?.hostel_id) {
+      toast.error('Hostel details not found.')
+      return
+    }
+
+    setPaying(feeId)
+    try {
+      // 1. Create Order
+      const res = await apiPayments.createOrder({
+        fee_id: feeId,
+        amount: Number(amount),
+        hostel_id: studentData.hostel_id,
+      })
+
+      if (!res.success || !res.data) {
+        throw new Error('Failed to create order')
+      }
+
+      // 2. Load script
+      await loadRazorpayScript()
+
+      // 3. Configure options
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+        amount: res.data.total_amount * 100, // Amount in paise
+        currency: 'INR',
+        name: 'HostelOS Payments',
+        description: 'Monthly Fee Payment',
+        order_id: res.data.order_id,
+        handler: async (response: any) => {
+          setPaying(feeId)
+          try {
+            await apiPayments.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              fee_id: feeId,
+            })
+            toast.success('Payment successful! 🎉')
+            // Reload fees
+            const data = await apiFees.getForStudent(studentData.id)
+            setFees(data || [])
+          } catch (e: any) {
+            toast.error(e.message || 'Payment verification failed')
+          } finally {
+            setPaying(null)
+          }
+        },
+        prefill: {
+          name: studentData.full_name || '',
+          email: studentData.email || '',
+          contact: studentData.phone || '',
+        },
+        theme: {
+          color: '#2563eb',
+        },
+      }
+
+      openRazorpayCheckout(options)
+    } catch (err: any) {
+      toast.error(err.message || 'Payment initiation failed')
+    } finally {
+      setPaying(null)
+    }
   }
 
   if (!studentData) return null
@@ -51,12 +114,16 @@ export function StudentFees() {
           <p className="text-slate-400 text-sm font-medium mb-1">Total Outstanding Due</p>
           <h2 className="text-4xl sm:text-5xl font-black tracking-tight">{loading ? '...' : fmt(totalDue)}</h2>
         </div>
-        {totalDue > 0 && (
+        {totalDue > 0 && firstPendingFee && (
           <button
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-95 w-full sm:w-auto"
-            onClick={handlePayNow}
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-95 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+            onClick={() => handlePayNow(firstPendingFee.id, firstPendingFee.due_amount)}
+            disabled={paying !== null}
           >
-            Pay Now
+            {paying === firstPendingFee.id ? (
+              <Loader2 className="animate-spin h-5 w-5 text-slate-900" />
+            ) : null}
+            {paying === firstPendingFee.id ? 'Processing...' : 'Pay Outstanding'}
           </button>
         )}
       </div>
@@ -118,6 +185,16 @@ export function StudentFees() {
                   )}>
                     {fee.status}
                   </span>
+                  {fee.status !== 'paid' && (
+                    <button
+                      onClick={() => handlePayNow(fee.id, fee.due_amount)}
+                      disabled={paying !== null}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {paying === fee.id ? <Loader2 className="animate-spin h-3 w-3" /> : null}
+                      {paying === fee.id ? 'Processing...' : 'Pay Now'}
+                    </button>
+                  )}
                   {fee.status === 'paid' && fee.receipt_id && (
                     <button
                       onClick={() => toast.success(`Receipt ID: ${fee.receipt_id}`)}

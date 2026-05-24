@@ -31,10 +31,16 @@ async function addFee(req, res) {
   }
   try {
     const id = crypto.randomUUID()
-    await pool.query(
-      'INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+    const result = await pool.query(
+      `INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (student_id, month) DO NOTHING
+       RETURNING id`,
       [id, hostel_id, student_id, amount, amount, month, due_date || null, 'pending']
     )
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Fee record already exists for this student and month.' })
+    }
     res.status(201).json({ id, success: true })
   } catch (err) {
     console.error('[addFee]', err)
@@ -70,11 +76,16 @@ async function generateBulkFees(req, res) {
     let created = 0
     for (const s of students) {
       if (!existingIds.has(s.id) && Number(s.monthly_fee) > 0) {
-        await conn.query(
-          'INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+        const insertRes = await conn.query(
+          `INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (student_id, month) DO NOTHING
+           RETURNING id`,
           [crypto.randomUUID(), hostel_id, s.id, s.monthly_fee, s.monthly_fee, normMonth, due_date || null, 'pending']
         )
-        created++
+        if (insertRes.rows.length > 0) {
+          created++
+        }
       }
     }
     await conn.query('COMMIT')
@@ -97,7 +108,13 @@ async function processPayment(req, res) {
   const conn = await pool.connect()
   try {
     await conn.query('BEGIN')
-    const { rows: feeRows } = await conn.query('SELECT * FROM fees WHERE id = $1 FOR UPDATE', [id])
+    const { rows: feeRows } = await conn.query(
+      `SELECT f.*, s.email AS student_email, s.full_name AS student_name
+       FROM fees f
+       JOIN students s ON s.id = f.student_id
+       WHERE f.id = $1 FOR UPDATE`,
+      [id]
+    )
     const fee = feeRows[0]
     if (!fee) {
       await conn.query('ROLLBACK')
@@ -136,6 +153,23 @@ async function processPayment(req, res) {
     )
 
     await conn.query('COMMIT')
+
+    // Send email receipt asynchronously
+    if (fee.student_email) {
+      const monthLabel = fee.month
+        ? new Date(fee.month).toLocaleString('default', { month: 'long', year: 'numeric' })
+        : 'Unknown';
+      const { sendPaymentReceiptEmail } = require('../utils/emailService')
+      sendPaymentReceiptEmail(
+        fee.student_email,
+        fee.student_name,
+        receiptId,
+        amount_paid,
+        monthLabel,
+        payment_method || 'cash'
+      ).catch(mailErr => console.error('Failed to send receipt email:', mailErr))
+    }
+
     res.json({ success: true, receipt_id: receiptId, status: newStatus })
   } catch (err) {
     await conn.query('ROLLBACK')

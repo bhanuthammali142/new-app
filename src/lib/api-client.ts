@@ -219,6 +219,9 @@ export const apiDashboard = {
 
   getRevenue: (hostelId: string) =>
     request(`/api/dashboard/revenue?hostel_id=${hostelId}`),
+
+  getOccupancy: (hostelId: string) =>
+    request(`/api/dashboard/occupancy?hostel_id=${hostelId}`),
 }
 
 // ── Complaints ────────────────────────────────────────────────────────────────
@@ -357,6 +360,57 @@ export const apiSuperAdmin = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export const apiNotifications = {
+  getAll: () =>
+    request<{ success: boolean; data: any[] }>('/api/notifications'),
+
+  getUnreadCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/api/notifications/unread-count'),
+
+  markAsRead: (id: string) =>
+    request(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+
+  markAllAsRead: () =>
+    request('/api/notifications/read-all', { method: 'PATCH' }),
+}
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+export const apiPayments = {
+  createOrder: (data: { fee_id: string; amount: number; hostel_id: string }) =>
+    request<{ success: boolean; data: { order_id: string; amount: number; convenience_fee: number; total_amount: number } }>('/api/payments/create-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  verifyPayment: (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; fee_id: string }) =>
+    request('/api/payments/verify-payment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getHistory: (hostelId: string, studentId?: string) => {
+    const params = new URLSearchParams({ hostel_id: hostelId })
+    if (studentId) params.append('student_id', studentId)
+    return request<{ success: boolean; data: any[] }>(`/api/payments/history?${params}`)
+  },
+}
+
+// ── Rewards ───────────────────────────────────────────────────────────────────
+export const apiRewards = {
+  getLeaderboard: (hostelId: string, period = 'monthly') =>
+    request<{ success: boolean; data: any[] }>(`/api/rewards/leaderboard?hostel_id=${hostelId}&period=${period}`),
+
+  getStudentRewards: (studentId: string) =>
+    request<{ success: boolean; data: { total_points: number; history: any[] } }>(`/api/rewards/student/${studentId}`),
+
+  award: (data: { student_id: string; hostel_id: string; points: number; reason: string }) =>
+    request('/api/rewards/award', { method: 'POST', body: JSON.stringify(data) }),
+
+  redeem: (data: { student_id: string; hostel_id: string; points_cost: number; reward_name: string }) =>
+    request('/api/rewards/redeem', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────

@@ -154,7 +154,8 @@ CREATE TABLE fees (
     paid_at TIMESTAMP NULL,
     receipt_id VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (student_id, month)
 );
 
 -- =============================================
@@ -206,7 +207,7 @@ CREATE TABLE attendance (
     hostel_id INT NOT NULL REFERENCES hostels(id),
     student_id VARCHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     date DATE NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'late', 'half_day')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'late', 'half_day', 'leave')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (student_id, date)
 );

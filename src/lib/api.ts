@@ -138,11 +138,7 @@ export async function getRevenueByMonth(hostelId: string) {
 }
 
 export async function getOccupancyByMonth(hostelId: string) {
-  // Derive from dashboard stats
-  const stats = await apiDashboard.getStats(hostelId)
-  const rate = stats.totalBeds > 0 ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100) : 0
-  const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan']
-  return months.map(name => ({ name, value: rate }))
+  return apiDashboard.getOccupancy(hostelId)
 }
 
 // ─── COMPLAINTS ───────────────────────────────────────────────────────────────

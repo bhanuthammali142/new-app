@@ -10,8 +10,6 @@ import type { Student } from '../types'
 import toast from 'react-hot-toast'
 import { Skeleton } from '../components/Skeleton'
 import { AnimateView } from '../components/AnimateView'
-import toast from 'react-hot-toast'
-
 export function Students() {
   const { user } = useAuth()
   const [hostelId, setHostelId] = useState<string | null>(null)

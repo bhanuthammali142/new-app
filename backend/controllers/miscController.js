@@ -12,7 +12,7 @@ async function getDashboardStats(req, res) {
 
   try {
     const { rows: [{ totalStudents }] } = await pool.query(
-      'SELECT COUNT(*) AS totalStudents FROM students WHERE hostel_id = $1', [hostelId]
+      'SELECT COUNT(*) AS "totalStudents" FROM students WHERE hostel_id = $1', [hostelId]
     )
     const { rows: beds } = await pool.query('SELECT status FROM beds WHERE hostel_id = $1', [hostelId])
     const totalBeds    = beds.length
@@ -28,7 +28,7 @@ async function getDashboardStats(req, res) {
     const pendingFees = allFees.filter(f => f.status === 'pending').reduce((s, f) => s + Number(f.due_amount), 0)
     const overdueFees = allFees.filter(f => f.status === 'overdue').reduce((s, f) => s + Number(f.due_amount), 0)
 
-    res.json({ totalStudents, totalBeds, occupiedBeds, monthlyRevenue, pendingFees, overdueFees })
+    res.json({ totalStudents: Number(totalStudents), totalBeds, occupiedBeds, monthlyRevenue, pendingFees, overdueFees })
   } catch (err) {
     console.error('[getDashboardStats]', err)
     res.status(500).json({ error: 'Server error' })
@@ -44,7 +44,7 @@ async function getRevenueByMonth(req, res) {
       "SELECT TO_CHAR(created_at, 'Mon YY') AS name, SUM(amount) AS amount FROM payments WHERE hostel_id = $1 GROUP BY TO_CHAR(created_at, 'Mon YY'), EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at) ORDER BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)",
       [hostelId]
     )
-    res.json(rows)
+    res.json(rows.map(r => ({ ...r, amount: Number(r.amount) })))
   } catch (err) {
     console.error('[getRevenueByMonth]', err)
     res.status(500).json({ error: 'Server error' })
@@ -92,9 +92,31 @@ async function addComplaint(req, res) {
 // PUT /api/complaints/:id
 async function updateComplaint(req, res) {
   const { id } = req.params
-  const { status, priority } = req.body
+  const { status, priority, message } = req.body
   try {
     await pool.query('UPDATE complaints SET status=$1, priority=$2 WHERE id=$3', [status, priority, id])
+
+    // Query complaint details + student email for notification
+    const { rows: details } = await pool.query(
+      `SELECT c.title, c.category, s.email AS student_email, s.full_name AS student_name
+       FROM complaints c
+       JOIN students s ON s.id = c.student_id
+       WHERE c.id = $1`,
+      [id]
+    )
+
+    if (details.length > 0 && details[0].student_email) {
+      const { sendComplaintUpdateEmail } = require('../utils/emailService')
+      sendComplaintUpdateEmail(
+        details[0].student_email,
+        details[0].student_name,
+        details[0].title,
+        details[0].category || 'General',
+        status,
+        message || ''
+      ).catch(mailErr => console.error('Failed to send complaint update email:', mailErr))
+    }
+
     res.json({ success: true })
   } catch (err) {
     console.error('[updateComplaint]', err)
@@ -128,6 +150,22 @@ async function addAnnouncement(req, res) {
       'INSERT INTO announcements (id, hostel_id, title, message) VALUES ($1,$2,$3,$4) RETURNING id',
       [id, hostel_id, title, message]
     )
+
+    // Fetch all active students of this hostel to email them
+    const { rows: students } = await pool.query(
+      'SELECT email, full_name FROM students WHERE hostel_id = $1 AND is_active = TRUE AND email IS NOT NULL',
+      [hostel_id]
+    )
+
+    // Send email announcement notifications asynchronously
+    if (students.length > 0) {
+      const { sendAnnouncementEmail } = require('../utils/emailService')
+      for (const student of students) {
+        sendAnnouncementEmail(student.email, student.full_name, title, message)
+          .catch(mailErr => console.error(`Failed to send announcement to ${student.email}:`, mailErr))
+      }
+    }
+
     res.status(201).json({ id, success: true })
   } catch (err) {
     console.error('[addAnnouncement]', err)
@@ -226,8 +264,50 @@ async function saveFoodMenu(req, res) {
   }
 }
 
+// GET /api/dashboard/occupancy?hostel_id=xxx
+async function getOccupancyByMonth(req, res) {
+  const hostelId = req.query.hostel_id || req.user.hostel_id
+  if (!hostelId) return res.json([])
+  try {
+    const { rows } = await pool.query(
+      `WITH months AS (
+         SELECT 
+           TO_CHAR(d, 'Mon YY') AS name,
+           DATE_TRUNC('month', d) + INTERVAL '1 month - 1 day' AS month_end,
+           EXTRACT(YEAR FROM d) AS yr,
+           EXTRACT(MONTH FROM d) AS mth
+         FROM generate_series(
+           CURRENT_DATE - INTERVAL '4 months', 
+           CURRENT_DATE + INTERVAL '1 month', 
+           INTERVAL '1 month'
+         ) d
+       )
+       SELECT 
+         m.name, 
+         (SELECT COUNT(*) FROM students s WHERE s.hostel_id = $1 AND s.joining_date <= m.month_end AND s.is_active = TRUE) AS students_count,
+         (SELECT COUNT(*) FROM beds b WHERE b.hostel_id = $1) AS total_beds
+       FROM months m 
+       ORDER BY m.yr, m.mth`,
+      [hostelId]
+    )
+    
+    // Map to occupancy percentage: { name: 'Jun 26', value: 35 }
+    const occupancyData = rows.map(r => {
+      const totalBeds = Number(r.total_beds)
+      const studentsCount = Number(r.students_count)
+      const value = totalBeds > 0 ? Math.round((studentsCount / totalBeds) * 100) : 0
+      return { name: r.name, value }
+    })
+    
+    res.json(occupancyData)
+  } catch (err) {
+    console.error('[getOccupancyByMonth]', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
 module.exports = {
-  getDashboardStats, getRevenueByMonth,
+  getDashboardStats, getRevenueByMonth, getOccupancyByMonth,
   getComplaints, addComplaint, updateComplaint,
   getAnnouncements, addAnnouncement, deleteAnnouncement,
   getAttendance, markAttendance,

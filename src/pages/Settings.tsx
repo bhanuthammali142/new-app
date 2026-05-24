@@ -1,7 +1,31 @@
 // src/pages/Settings.tsx
 import React, { useEffect, useState, lazy, Suspense } from 'react'
-import { Building, Shield, Bell, CreditCard, User, LogOut, Save, Loader2, UtensilsCrossed, Key, ShieldCheck, Sparkles, Receipt } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { 
+  Building, 
+  Bell, 
+  ShieldAlert, 
+  CreditCard, 
+  Database, 
+  HelpCircle, 
+  ChevronRight, 
+  Search, 
+  ArrowLeft, 
+  LogOut, 
+  Key, 
+  Save, 
+  Loader2, 
+  UtensilsCrossed, 
+  CheckCircle2, 
+  Download, 
+  Mail, 
+  Phone,
+  LayoutGrid,
+  CalendarRange,
+  Bed,
+  Users,
+  Info
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../lib/AuthContext'
 import { getOrCreateHostel, updateHostel, updateProfile } from '../lib/api'
 import { apiAuth } from '../lib/api-client'
@@ -10,11 +34,12 @@ import toast from 'react-hot-toast'
 
 const FoodMenuEditor = lazy(() => import('./FoodMenuEditor').then(m => ({ default: m.FoodMenuEditor })))
 
-type Tab = 'Hostel Details' | 'Food Menu' | 'Profile' | 'Notifications' | 'Security' | 'Billing'
+type SubPage = 'hostel_profile' | 'notifications' | 'security' | 'financial' | 'data' | 'about' | 'food_menu' | null
 
 export function Settings() {
   const { user, signOut, setUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>('Hostel Details')
+  const [activeSubPage, setActiveSubPage] = useState<SubPage>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [hostel, setHostel] = useState<Hostel | null>(null)
   const [saving, setSaving] = useState(false)
   
@@ -71,26 +96,19 @@ export function Settings() {
     })
   }, [user])
 
-  const handleSaveHostel = async () => {
-    if (!hostel) return
+  const handleSaveHostelAndProfile = async () => {
     setSaving(true)
     try {
-      await updateHostel(hostel.id, {
-        name: hostelForm.name,
-        address: hostelForm.address,
-        contact_phone: hostelForm.contact_phone,
-      })
-      toast.success('Hostel details saved!')
-    } catch {
-      toast.error('Failed to save hostel details.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleSaveProfile = async () => {
-    setSaving(true)
-    try {
+      // Save Hostel Details if loaded
+      if (hostel) {
+        await updateHostel(hostel.id, {
+          name: hostelForm.name,
+          address: hostelForm.address,
+          contact_phone: hostelForm.contact_phone,
+        })
+      }
+      
+      // Save User Profile
       await updateProfile(profileForm.name, profileForm.phone, profileForm.email)
       
       // Update local auth context immediately
@@ -103,10 +121,11 @@ export function Settings() {
         })
       }
       
-      toast.success('User profile updated successfully!')
+      toast.success('Profile and Hostel details saved!')
+      setActiveSubPage(null)
     } catch (err: any) {
-      console.error('Profile update error:', err)
-      toast.error(err.message || 'Failed to update profile.')
+      console.error('Save error:', err)
+      toast.error(err.message || 'Failed to save settings.')
     } finally {
       setSaving(false)
     }
@@ -131,6 +150,7 @@ export function Settings() {
       await apiAuth.changePassword(passwordForm.newPassword)
       toast.success('Password updated successfully!')
       setPasswordForm({ newPassword: '', confirmPassword: '' })
+      setActiveSubPage(null)
     } catch (err: any) {
       console.error('Password update error:', err)
       toast.error(err.message || 'Failed to update password.')
@@ -141,290 +161,328 @@ export function Settings() {
 
   const handleSaveNotifications = () => {
     setSaving(true)
-    // Simulate API delay
     setTimeout(() => {
       setSaving(false)
       toast.success('Notification preferences updated!')
+      setActiveSubPage(null)
     }, 500)
   }
 
-  const tabs: { icon: React.ElementType; label: Tab }[] = [
-    { icon: Building, label: 'Hostel Details' },
-    { icon: UtensilsCrossed, label: 'Food Menu' },
-    { icon: User, label: 'Profile' },
-    { icon: Bell, label: 'Notifications' },
-    { icon: Shield, label: 'Security' },
-    { icon: CreditCard, label: 'Billing' },
+  const handleExportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+      user,
+      hostel,
+      preferences: notifPreferences
+    }, null, 2))
+    const downloadAnchor = document.createElement('a')
+    downloadAnchor.setAttribute("href", dataStr)
+    downloadAnchor.setAttribute("download", `hostelos_settings_export.json`)
+    document.body.appendChild(downloadAnchor)
+    downloadAnchor.click()
+    downloadAnchor.remove()
+    toast.success('Data exported successfully!')
+  }
+
+  const settingsItems = [
+    {
+      category: 'HOSTEL ADMINISTRATION',
+      items: [
+        { id: 'hostel_profile' as SubPage, name: 'Hostel Profile', desc: 'Name, address, and contact details', icon: Building, color: 'bg-blue-50 text-blue-600' },
+        { id: 'notifications' as SubPage, name: 'Notifications', desc: 'Push, email, and SMS preferences', icon: Bell, color: 'bg-indigo-50 text-indigo-600' }
+      ]
+    },
+    {
+      category: 'SECURITY & ACCESS',
+      items: [
+        { id: 'security' as SubPage, name: 'Login & Security', desc: 'Password, 2FA, session management', icon: ShieldAlert, color: 'bg-blue-50 text-blue-600' }
+      ]
+    },
+    {
+      category: 'OPERATIONS',
+      items: [
+        { id: 'food_menu' as SubPage, name: 'Food Menu', desc: 'Manage hostel meals and catering', icon: UtensilsCrossed, color: 'bg-purple-50 text-purple-600' },
+        { id: 'financial' as SubPage, name: 'Financial Configurations', desc: 'Tax settings, currency, and gateways', icon: CreditCard, color: 'bg-indigo-50 text-indigo-600' },
+        { id: 'data' as SubPage, name: 'Data Management', desc: 'Backup, export, and audit logs', icon: Database, color: 'bg-blue-50 text-blue-600' }
+      ]
+    },
+    {
+      category: 'SUPPORT',
+      items: [
+        { id: 'about' as SubPage, name: 'About & Support', desc: 'Help center and version info', icon: HelpCircle, color: 'bg-indigo-50 text-indigo-600' }
+      ]
+    }
   ]
 
+  // Filter settings based on search input
+  const filteredSettings = settingsItems.map(cat => {
+    const items = cat.items.filter(item => 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      item.desc.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    return { ...cat, items }
+  }).filter(cat => cat.items.length > 0)
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 flex items-center gap-2">
-          Settings
-        </h1>
-        <p className="text-slate-500 mt-1">Configure your hostel preferences, account info, and security details.</p>
+    <div className="w-full max-w-2xl mx-auto bg-slate-50 min-h-[85vh] rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden flex flex-col pb-20">
+      
+      {/* Settings Navigation/Header (Always Present) */}
+      <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between shadow-sm shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-indigo-500/10">
+            {profileForm.name?.charAt(0) || 'A'}
+          </div>
+          <span className="font-extrabold text-slate-800 tracking-tight text-base">HostelOS</span>
+        </div>
+        <button className="relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition">
+          <Bell className="h-5 w-5" />
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-indigo-600 rounded-full" />
+        </button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8 mt-8">
-        
-        {/* Navigation Sidebar */}
-        <div className="w-full md:w-64 flex flex-col gap-1 shrink-0">
-          {tabs.map(({ icon: Icon, label }) => (
-            <button
-              key={label}
-              onClick={() => setActiveTab(label)}
-              className={cn(
-                'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-left border border-transparent',
-                activeTab === label
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-100/50 shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              )}
-            >
-              <Icon className={cn('h-4 w-4', activeTab === label ? 'text-indigo-600' : 'text-slate-400')} />
-              {label}
-            </button>
-          ))}
-          <div className="h-px bg-slate-200/60 my-3 mx-2" />
-          <button
-            onClick={signOut}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all text-left"
+      <AnimatePresence mode="wait">
+        {activeSubPage === null ? (
+          /* MAIN SETTINGS PAGE VIEW */
+          <motion.div
+            key="list"
+            initial={{ opacity: 0, x: -15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 p-6 space-y-6 overflow-y-auto"
           >
-            <LogOut className="h-4 w-4" />Sign out
-          </button>
-        </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Settings</h1>
+              <p className="text-xs text-slate-500 mt-1">Configure your administrative environment</p>
+            </div>
 
-        {/* Form panel container */}
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 sm:p-8 flex-1">
-            
-            {/* TABS IMPLEMENTATION */}
-            
-            {/* 1. Hostel Details */}
-            {activeTab === 'Hostel Details' && (
-              <div className="space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-black text-slate-900">Hostel Details</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Update public metadata, contact information, and address for this hostel.</p>
+            {/* Search Settings Bar */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search settings (⌘K)"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm shadow-sm transition"
+              />
+            </div>
+
+            {/* Render Filtered Settings List */}
+            <div className="space-y-6">
+              {filteredSettings.map(cat => (
+                <div key={cat.category} className="space-y-2">
+                  <h3 className="text-[10px] font-black text-indigo-600/80 uppercase tracking-widest pl-1">{cat.category}</h3>
+                  <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
+                    {cat.items.map(item => (
+                      <button
+                        key={item.name}
+                        onClick={() => setActiveSubPage(item.id)}
+                        className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition text-left group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2.5 rounded-xl shrink-0 ${item.color} shadow-sm border border-black/5`}>
+                            <item.icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-600 transition">{item.name}</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                
+              ))}
+            </div>
+
+            {/* Logout Buttons */}
+            <div className="pt-4 space-y-3">
+              <button
+                onClick={signOut}
+                className="w-full py-3.5 bg-rose-50/50 hover:bg-rose-50 text-rose-600 font-bold border border-rose-200/60 rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-sm"
+              >
+                <LogOut className="h-4 w-4" /> Log Out of All Devices
+              </button>
+              <p className="text-center text-[10px] text-slate-400 font-medium">HostelOS Enterprise v4.2.0-stable</p>
+            </div>
+          </motion.div>
+        ) : (
+          /* DETAIL SUB-PAGES VIEWS */
+          <motion.div
+            key="details"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 15 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 p-6 space-y-6 overflow-y-auto"
+          >
+            {/* Back Button */}
+            <button
+              onClick={() => setActiveSubPage(null)}
+              className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition"
+            >
+              <ArrowLeft className="h-4 w-4" /> back to Settings
+            </button>
+
+            {/* 1. Hostel Profile & Admin Details Form */}
+            {activeSubPage === 'hostel_profile' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Hostel Profile</h2>
+                  <p className="text-xs text-slate-400 mt-1">Name, address, and contact details</p>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                    <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Hostel Metadata</h3>
+                    
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Hostel Name</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Hostel Name</label>
                       <input
                         type="text"
                         value={hostelForm.name}
                         onChange={e => setHostelForm(p => ({ ...p, name: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                       />
                     </div>
+
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Contact Number</label>
-                      <input
-                        type="text"
-                        value={hostelForm.contact_phone}
-                        onChange={e => setHostelForm(p => ({ ...p, contact_phone: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Address</label>
+                      <textarea
+                        rows={3}
+                        value={hostelForm.address}
+                        onChange={e => setHostelForm(p => ({ ...p, address: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none transition"
                       />
                     </div>
                   </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Address</label>
-                    <textarea
-                      rows={3}
-                      value={hostelForm.address}
-                      onChange={e => setHostelForm(p => ({ ...p, address: e.target.value }))}
-                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm resize-none transition"
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Registered Email (Read Only)</label>
-                    <input
-                      type="email"
-                      value={hostelForm.contact_email}
-                      disabled
-                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 text-slate-400 cursor-not-allowed"
-                    />
-                    <p className="text-[10px] text-slate-400">Hostel contact email is linked to the primary administrator login credentials.</p>
-                  </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button
-                      onClick={handleSaveHostel}
-                      disabled={saving}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 min-w-[130px] justify-center shadow-lg shadow-indigo-600/15 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <><Loader2 className="animate-spin h-4 w-4" />Saving...</>
-                      ) : (
-                        <><Save className="h-4 w-4" />Save Details</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                    <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Primary Admin Profile</h3>
 
-            {/* 2. Food Menu */}
-            {activeTab === 'Food Menu' && (
-              <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>}>
-                <FoodMenuEditor />
-              </Suspense>
-            )}
-
-            {/* 3. User Profile */}
-            {activeTab === 'Profile' && (
-              <div className="space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-black text-slate-900">User Profile</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Manage your personal admin account credentials and contact phone.</p>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-lg flex items-center justify-center uppercase shrink-0">
-                      {profileForm.name?.charAt(0) || 'A'}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{profileForm.name || 'Administrator'}</h4>
-                      <p className="text-xs text-slate-400 capitalize mt-0.5">{user?.role?.replace('_', ' ') || 'Admin'}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Full Name</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Full Name</label>
                       <input
                         type="text"
                         value={profileForm.name}
                         onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Contact Phone</label>
-                      <input
-                        type="text"
-                        value={profileForm.phone}
-                        onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Admin Email</label>
-                    <input
-                      type="email"
-                      value={profileForm.email}
-                      onChange={e => setProfileForm(p => ({ ...p, email: e.target.value }))}
-                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
-                    />
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button
-                      onClick={handleSaveProfile}
-                      disabled={saving}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 min-w-[130px] justify-center shadow-lg shadow-indigo-600/15 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <><Loader2 className="animate-spin h-4 w-4" />Saving...</>
-                      ) : (
-                        <><Save className="h-4 w-4" />Save Profile</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 4. Notifications */}
-            {activeTab === 'Notifications' && (
-              <div className="space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-black text-slate-900">Notifications</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Control how and when you receive automated emails and SMS notifications.</p>
-                </div>
-                
-                <div className="space-y-5">
-                  {[
-                    {
-                      id: 'emailComplaints',
-                      title: 'Complaint Email Alerts',
-                      desc: 'Send an email update instantly whenever a student files a new complaint.',
-                      value: notifPreferences.emailComplaints,
-                    },
-                    {
-                      id: 'smsOverdueFees',
-                      title: 'SMS Payment Reminders',
-                      desc: 'Send automated SMS to students when their monthly fee balance becomes overdue.',
-                      value: notifPreferences.smsOverdueFees,
-                    },
-                    {
-                      id: 'emailDailyAttendance',
-                      title: 'Daily Attendance Report',
-                      desc: 'Receive an automated email summary at 10 PM daily containing today\'s absent list.',
-                      value: notifPreferences.emailDailyAttendance,
-                    },
-                    {
-                      id: 'pushRewards',
-                      title: 'Rewards Updates',
-                      desc: 'Get alerted when student points are updated or new leaderboard rankings roll out.',
-                      value: notifPreferences.pushRewards,
-                    },
-                  ].map((pref) => (
-                    <div key={pref.id} className="flex justify-between items-start gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition duration-200">
-                      <div className="space-y-0.5">
-                        <h4 className="font-bold text-slate-900 text-sm">{pref.title}</h4>
-                        <p className="text-xs text-slate-500 max-w-lg">{pref.desc}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Contact Phone</label>
+                        <input
+                          type="text"
+                          value={profileForm.phone}
+                          onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                        />
                       </div>
-                      <button
-                        onClick={() => setNotifPreferences(p => ({ ...p, [pref.id]: !p[pref.id as keyof typeof notifPreferences] }))}
-                        className={cn(
-                          "w-11 h-6 rounded-full transition-colors relative shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                          pref.value ? 'bg-indigo-600' : 'bg-slate-200'
-                        )}
-                      >
-                        <span className={cn(
-                          "absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm",
-                          pref.value ? 'translate-x-5' : 'translate-x-0'
-                        )} />
-                      </button>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Email</label>
+                        <input
+                          type="email"
+                          value={profileForm.email}
+                          onChange={e => setProfileForm(p => ({ ...p, email: e.target.value }))}
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                        />
+                      </div>
                     </div>
-                  ))}
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button
-                      onClick={handleSaveNotifications}
-                      disabled={saving}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 min-w-[130px] justify-center shadow-lg shadow-indigo-600/15 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <><Loader2 className="animate-spin h-4 w-4" />Saving...</>
-                      ) : (
-                        <><Save className="h-4 w-4" />Save Preferences</>
-                      )}
-                    </button>
                   </div>
+
+                  <button
+                    onClick={handleSaveHostelAndProfile}
+                    disabled={saving}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15 disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} Save Details
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* 5. Security */}
-            {activeTab === 'Security' && (
+            {/* 2. Notifications Preferences Form */}
+            {activeSubPage === 'notifications' && (
               <div className="space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-black text-slate-900">Security & Credentials</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Reset your password or enable enhanced security options.</p>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Notifications</h2>
+                  <p className="text-xs text-slate-400 mt-1">Push, email, and SMS preferences</p>
                 </div>
-                
+
                 <div className="space-y-4">
+                  <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm divide-y divide-slate-100 overflow-hidden">
+                    {[
+                      {
+                        id: 'emailComplaints',
+                        title: 'Complaint Email Alerts',
+                        desc: 'Send an email update instantly whenever a student files a new complaint.',
+                        value: notifPreferences.emailComplaints,
+                      },
+                      {
+                        id: 'smsOverdueFees',
+                        title: 'SMS Payment Reminders',
+                        desc: 'Send automated SMS to students when their monthly fee balance becomes overdue.',
+                        value: notifPreferences.smsOverdueFees,
+                      },
+                      {
+                        id: 'emailDailyAttendance',
+                        title: 'Daily Attendance Report',
+                        desc: 'Receive an automated email summary at 10 PM daily containing today\'s absent list.',
+                        value: notifPreferences.emailDailyAttendance,
+                      },
+                      {
+                        id: 'pushRewards',
+                        title: 'Rewards Updates',
+                        desc: 'Get alerted when student points are updated or new leaderboard rankings roll out.',
+                        value: notifPreferences.pushRewards,
+                      },
+                    ].map((pref) => (
+                      <div key={pref.id} className="p-5 flex justify-between items-start gap-4 hover:bg-slate-50 transition duration-150">
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-slate-800 text-sm">{pref.title}</h4>
+                          <p className="text-xs text-slate-400 leading-relaxed">{pref.desc}</p>
+                        </div>
+                        <button
+                          onClick={() => setNotifPreferences(p => ({ ...p, [pref.id]: !p[pref.id as keyof typeof notifPreferences] }))}
+                          className={`w-11 h-6 rounded-full transition-colors relative shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                            pref.value ? 'bg-indigo-600' : 'bg-slate-200'
+                          }`}
+                        >
+                          <span className={`absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
+                            pref.value ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={handleSaveNotifications}
+                    disabled={saving}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15 disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} Save Preferences
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Login & Security Form */}
+            {activeSubPage === 'security' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Login & Security</h2>
+                  <p className="text-xs text-slate-400 mt-1">Password, 2FA, session management</p>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Change Password</h3>
+
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">New Password</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">New Password</label>
                     <div className="relative">
                       <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
@@ -438,7 +496,7 @@ export function Settings() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Confirm New Password</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Confirm Password</label>
                     <div className="relative">
                       <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
@@ -450,89 +508,222 @@ export function Settings() {
                       />
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button
-                      onClick={handleSavePassword}
-                      disabled={saving}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 min-w-[130px] justify-center shadow-lg shadow-indigo-600/15 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <><Loader2 className="animate-spin h-4 w-4" />Updating...</>
-                      ) : (
-                        <><Key className="h-4 w-4" />Update Password</>
-                      )}
-                    </button>
-                  </div>
                 </div>
+
+                <button
+                  onClick={handleSavePassword}
+                  disabled={saving}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Key className="h-4 w-4" />} Update Password
+                </button>
               </div>
             )}
 
-            {/* 6. Billing */}
-            {activeTab === 'Billing' && (
+            {/* 4. Food Menu Editor Tab */}
+            {activeSubPage === 'food_menu' && (
               <div className="space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-black text-slate-900">Subscription & Billing</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Check plan information, billing cycle, and invoice history details.</p>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Food Menu</h2>
+                  <p className="text-xs text-slate-400 mt-1">Manage hostel meals and catering</p>
                 </div>
                 
-                <div className="space-y-6">
-                  {/* Premium subscription card */}
-                  <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 text-white rounded-2xl p-6 relative overflow-hidden shadow-xl border border-indigo-900/50">
-                    <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
-                      <Building className="h-40 w-40" />
-                    </div>
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1">
-                        <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-400/20 flex items-center gap-1 w-max">
-                          <Sparkles className="h-3 w-3" /> PREMIUM ACCOUNT
-                        </span>
-                        <h3 className="text-2xl font-black tracking-tight">{hostelForm.name || 'Elite Hostel'}</h3>
-                        <p className="text-xs text-indigo-200">Billed monthly · Next renewal on June 20, 2026</p>
-                      </div>
-                      <span className="text-2xl font-black tracking-tight">$49<span className="text-xs font-normal text-indigo-300">/mo</span></span>
-                    </div>
-                    
-                    <div className="h-px bg-indigo-500/20 my-5" />
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm">
+                  <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>}>
+                    <FoodMenuEditor />
+                  </Suspense>
+                </div>
+              </div>
+            )}
 
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-indigo-400" />
-                        <span className="text-indigo-200 font-medium">Automatic payments enabled via Mastercard ending in 8890</span>
-                      </div>
-                      <button className="text-indigo-300 font-bold hover:text-white transition">Update Card</button>
-                    </div>
+            {/* 5. Financial Configurations Form */}
+            {activeSubPage === 'financial' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Financial Configurations</h2>
+                  <p className="text-xs text-slate-400 mt-1">Tax settings, currency, and payment gateways</p>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Payment Gateways</h3>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Razorpay Key ID</label>
+                    <input
+                      type="text"
+                      placeholder="rzp_test_..."
+                      defaultValue="rzp_test_Sss30xXqXEYmM9"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    />
                   </div>
 
-                  {/* Plan details */}
-                  <div className="space-y-4">
-                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                      <Receipt className="h-4 w-4 text-indigo-600" /> Plan Features & Limits
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {[
-                        { label: 'Hostel Rooms', limit: 'Unlimited Allocation', status: 'Active' },
-                        { label: 'Student Admissions', limit: 'Up to 500 Active', status: '34 Admits' },
-                        { label: 'Cloud Storage', limit: '5 GB Aadhaar Photos', status: '0.4 GB Used' },
-                      ].map((feat) => (
-                        <div key={feat.label} className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/50">
-                          <p className="text-xs font-bold text-slate-500 uppercase">{feat.label}</p>
-                          <p className="font-bold text-slate-800 mt-1 text-sm">{feat.limit}</p>
-                          <span className="inline-block mt-2 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            {feat.status}
-                          </span>
-                        </div>
-                      ))}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Razorpay Secret Key</label>
+                    <input
+                      type="password"
+                      placeholder="••••••••••••••••••••"
+                      defaultValue="xr3MzaLX7jh9VDHtOUsgtO5F"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Localization & Tax</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Currency</label>
+                      <select className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white">
+                        <option value="INR">INR (₹)</option>
+                        <option value="USD">USD ($)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">GST / Service Tax (%)</label>
+                      <input
+                        type="number"
+                        defaultValue="18"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    toast.success('Financial configurations updated!')
+                    setActiveSubPage(null)
+                  }}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15"
+                >
+                  <Save className="h-4 w-4" /> Save Financial Configs
+                </button>
+              </div>
+            )}
+
+            {/* 6. Data Management Form */}
+            {activeSubPage === 'data' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Data Management</h2>
+                  <p className="text-xs text-slate-400 mt-1">Backup, export, and audit logs</p>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Export System Data</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Download your administrative settings, tenant profiles, and metadata records in structured JSON format.
+                  </p>
+                  
+                  <button
+                    onClick={handleExportData}
+                    className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold border border-slate-200 rounded-2xl text-sm transition flex items-center justify-center gap-2"
+                  >
+                    <Download className="h-4 w-4" /> Export Configuration JSON
+                  </button>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-rose-600 uppercase tracking-wider">System Cache</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Clear local storage token cache if you are experiencing session authentication conflicts.
+                  </p>
+                  
+                  <button
+                    onClick={() => {
+                      localStorage.clear()
+                      toast.success('Authentication cache cleared. Please reload.')
+                      window.location.reload()
+                    }}
+                    className="w-full py-3 bg-rose-50/50 hover:bg-rose-50 text-rose-600 border border-rose-200/60 font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2"
+                  >
+                    Clear Local Session Cache
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 7. About & Support */}
+            {activeSubPage === 'about' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">About & Support</h2>
+                  <p className="text-xs text-slate-400 mt-1">Help center, licenses, and version info</p>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4 text-center">
+                  <div className="h-16 w-16 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                    <Info className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">HostelOS Enterprise</h3>
+                    <p className="text-xs text-slate-400 mt-1">Version v4.2.0-stable</p>
+                  </div>
+                  <div className="h-px bg-slate-100 my-2" />
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    HostelOS is a premium, secure SaaS Hostel Management System built for hostel owners and administrators globally.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider">Developer Support</h3>
+                  
+                  <div className="space-y-3 text-xs">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-400">Support Email</span>
+                      <span className="font-bold text-slate-800">support@hostelos.com</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-400">Documentation</span>
+                      <a href="https://supabase.com/docs" target="_blank" rel="noreferrer" className="font-bold text-indigo-600 hover:underline">Read Docs</a>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-400">Database Engine</span>
+                      <span className="font-bold text-slate-800">PostgreSQL (Supabase)</span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          </div>
-        </div>
-
+      {/* Bottom Navigation Bar for Mobile (Mocked to match user screenshot style) */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t border-slate-200/60 py-2 px-6 flex justify-between items-center z-50 md:hidden shadow-lg shadow-black/5">
+        <button 
+          onClick={() => window.location.href = '/admin'}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
+        >
+          <LayoutGrid className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Dashboard</span>
+        </button>
+        <button 
+          onClick={() => window.location.href = '/admin/bookings'}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
+        >
+          <CalendarRange className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Bookings</span>
+        </button>
+        <button 
+          onClick={() => window.location.href = '/admin/rooms'}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
+        >
+          <Bed className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Rooms</span>
+        </button>
+        <button 
+          onClick={() => window.location.href = '/admin/students'}
+          className="flex flex-col items-center gap-1 text-indigo-600 transition"
+        >
+          <Users className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Students</span>
+        </button>
       </div>
+
     </div>
   )
 }
+

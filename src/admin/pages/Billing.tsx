@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CreditCard, CheckCircle2, AlertCircle, Users, Calendar, ArrowRight } from 'lucide-react';
 import { apiBilling } from '../../lib/api-client';
 import { Skeleton } from '../../components/Skeleton';
-import { AnimateView } from '../../components/AnimateView';
+
 import toast from 'react-hot-toast';
 
 export function Billing() {
@@ -67,12 +67,27 @@ export function Billing() {
     );
   }
 
+  if (!data) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl max-w-4xl">
+        <h2 className="text-xl font-bold">Failed to load subscription details</h2>
+        <p className="mt-2 text-sm text-red-600">Could not retrieve subscription information from the server. Please check your connection and try again.</p>
+        <button 
+          onClick={() => refetch()}
+          className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition text-sm"
+        >
+          Retry Loading
+        </button>
+      </div>
+    );
+  }
+
   const sub = data;
   const isPastDue = sub.status === 'past_due' || sub.status === 'canceled';
   const isActive = sub.status === 'active' || sub.status === 'trialing';
 
   return (
-    <AnimateView className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-black text-slate-900">Billing & Subscription</h1>
         <p className="text-slate-500 mt-1">Manage your platform plan, view invoices, and upgrade capacity.</p>
@@ -131,7 +146,7 @@ export function Billing() {
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div 
                 className={`h-full rounded-full transition-all ${sub.is_capacity_reached ? 'bg-red-500' : 'bg-indigo-500'}`}
-                style={{ width: \`\${Math.min((sub.student_count / sub.max_students) * 100, 100)}%\` }}
+                style={{ width: `${Math.min((sub.student_count / sub.max_students) * 100, 100)}%` }}
               />
             </div>
 
@@ -184,6 +199,6 @@ export function Billing() {
           </ul>
         </div>
       </div>
-    </AnimateView>
+    </div>
   );
 }

@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { Zap, TrendingUp, Gift, Award, Loader2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import toast from 'react-hot-toast'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiRewards } from '../../lib/api-client'
 
 const AVAILABLE_REWARDS = [
   { id: 1, name: 'Movie Ticket', cost: 150, icon: '🎬' },
@@ -19,16 +20,15 @@ const AVAILABLE_REWARDS = [
 export function StudentRewards() {
   const { studentData, hostelId } = useAuth()
   const [redeeming, setRedeeming] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   // Fetch student's reward points
   const { data: rewardData } = useQuery({
     queryKey: ['student-rewards', studentData?.id],
     queryFn: async () => {
       if (!studentData?.id) return null
-      const response = await fetch(`/api/rewards/student/${studentData.id}`)
-      if (!response.ok) throw new Error('Failed to fetch rewards')
-      const json = await response.json()
-      return json.data
+      const res = await apiRewards.getStudentRewards(studentData.id)
+      return res.data
     },
     enabled: !!studentData?.id,
   })
@@ -38,12 +38,8 @@ export function StudentRewards() {
     queryKey: ['rewards-leaderboard', hostelId],
     queryFn: async () => {
       if (!hostelId) return []
-      const response = await fetch(
-        `/api/rewards/leaderboard?hostel_id=${hostelId}&period=monthly`
-      )
-      if (!response.ok) throw new Error('Failed to fetch leaderboard')
-      const json = await response.json()
-      return json.data || []
+      const res = await apiRewards.getLeaderboard(hostelId, 'monthly')
+      return res.data || []
     },
     enabled: !!hostelId,
   })
@@ -59,21 +55,16 @@ export function StudentRewards() {
 
     setRedeeming(reward.id.toString())
     try {
-      const response = await fetch('/api/rewards/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          student_id: studentData?.id,
-          hostel_id: hostelId,
-          points_cost: reward.cost,
-          reward_name: reward.name,
-        }),
+      await apiRewards.redeem({
+        student_id: studentData?.id || '',
+        hostel_id: hostelId || '',
+        points_cost: reward.cost,
+        reward_name: reward.name,
       })
-
-      if (!response.ok) throw new Error('Failed to redeem reward')
       
       toast.success(`${reward.name} redeemed! 🎉`)
-      window.location.reload()
+      queryClient.invalidateQueries({ queryKey: ['student-rewards', studentData?.id] })
+      queryClient.invalidateQueries({ queryKey: ['rewards-leaderboard', hostelId] })
     } catch (err: any) {
       toast.error(err.message || 'Redemption failed')
     } finally {

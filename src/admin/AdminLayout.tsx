@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AdminSidebar } from './components/AdminSidebar'
 import { Menu, X } from 'lucide-react'
+import { NotificationBell } from '../components/NotificationBell'
 
 export function AdminLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -49,13 +50,16 @@ export function AdminLayout() {
           <div className="flex items-center gap-2 text-blue-600">
             <span className="text-lg font-black tracking-tight text-slate-900">HostelOS</span>
           </div>
-          <button 
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-2 -mr-2 rounded-lg text-slate-500 hover:bg-slate-100"
-            aria-label="Open navigation menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 -mr-2 rounded-lg text-slate-500 hover:bg-slate-100"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">

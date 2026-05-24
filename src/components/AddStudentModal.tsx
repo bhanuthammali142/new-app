@@ -69,6 +69,7 @@ export function AddStudentModal({ isOpen, hostelId, onClose, onSuccess }: AddStu
     if (!hostelId) return
     if (!form.full_name) return toast.error('Full name is required.')
     if (!form.phone) return toast.error('Phone number is required.')
+    if (!form.email) return toast.error('Email address is required.')
     if (!form.room_id || !form.bed_id) return toast.error('Room and bed assignment is required.')
 
     setSaving(true)
@@ -210,7 +211,7 @@ export function AddStudentModal({ isOpen, hostelId, onClose, onSuccess }: AddStu
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Email (for login)</label>
+                  <label className="text-sm font-medium text-slate-700">Email Address *</label>
                   <input
                     type="email"
                     value={form.email}
@@ -409,7 +410,7 @@ export function AddStudentModal({ isOpen, hostelId, onClose, onSuccess }: AddStu
           {step < 3 && (
             <button
               onClick={() => setStep(step + 1)}
-              disabled={step === 1 && (!form.full_name || !form.phone)}
+              disabled={step === 1 && (!form.full_name || !form.phone || !form.email)}
               className="btn-primary min-w-[120px] ml-auto disabled:opacity-40"
             >
               Continue →

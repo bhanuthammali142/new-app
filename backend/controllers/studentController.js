@@ -104,9 +104,19 @@ async function addStudent(req, res) {
     let userId = null
     let credentials = null
     if (email) {
-      const { rows: existing } = await conn.query('SELECT id FROM users WHERE email = $1', [email])
+      const { rows: existing } = await conn.query('SELECT id, role FROM users WHERE email = $1', [email])
       if (existing.length > 0) {
+        if (existing[0].role !== 'student') {
+          await conn.query('ROLLBACK')
+          conn.release()
+          return res.status(400).json({ error: 'This email is already registered to an administrator account.' })
+        }
         userId = existing[0].id
+        // Reset password for existing student login
+        const tempPassword = crypto.randomBytes(8).toString('hex').slice(0, 8) + 'Ab@1'
+        const hash = await bcrypt.hash(tempPassword, 12)
+        await conn.query('UPDATE users SET password = $1, is_active = TRUE WHERE id = $2', [hash, userId])
+        credentials = { email, password: tempPassword }
       } else {
         // Generate a readable secure temp password
         const tempPassword = crypto.randomBytes(8).toString('hex').slice(0, 8) + 'Ab@1'
@@ -150,7 +160,9 @@ async function addStudent(req, res) {
         const dueDate   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 5)).toISOString().split('T')[0]
         await conn.query(
           `INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (student_id, month) DO NOTHING
+           RETURNING id`,
           [crypto.randomUUID(), hostel_id, studentId, fee, fee, monthStart, dueDate, 'pending']
         )
       }
@@ -158,6 +170,13 @@ async function addStudent(req, res) {
 
     await conn.query('COMMIT')
     conn.release()
+
+    // Send welcome email asynchronously
+    if (email && credentials) {
+      const { sendWelcomeEmail } = require('../utils/emailService')
+      sendWelcomeEmail(email, full_name, credentials.password)
+        .catch(err => console.error('Failed to send welcome email:', err))
+    }
 
     const { rows: rows } = await pool.query(
       `SELECT s.*, r.room_number, b.bed_number
@@ -344,11 +363,17 @@ async function bulkAddStudents(req, res) {
       // 3. Create user login if email provided
       let userId = null
       if (email) {
-        const { rows: existing } = await conn.query('SELECT id FROM users WHERE email = $1', [email])
+        const { rows: existing } = await conn.query('SELECT id, role FROM users WHERE email = $1', [email])
         if (existing.length > 0) {
+          if (existing[0].role !== 'student') {
+            throw new Error(`Email ${email} is already registered to an administrator account.`)
+          }
           userId = existing[0].id
+          const tempPassword = student.password || 'Student@123'
+          const hash = await bcrypt.hash(tempPassword, 12)
+          await conn.query('UPDATE users SET password = $1, is_active = TRUE WHERE id = $2', [hash, userId])
         } else {
-          const tempPassword = 'Student@123'
+          const tempPassword = student.password || 'Student@123'
           const hash = await bcrypt.hash(tempPassword, 12)
           const { rows: userResult } = await conn.query(
             'INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING id',
@@ -389,7 +414,8 @@ async function bulkAddStudents(req, res) {
           const dueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 5)).toISOString().split('T')[0]
           await conn.query(
             `INSERT INTO fees (id, hostel_id, student_id, amount, due_amount, month, due_date, status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+             ON CONFLICT (student_id, month) DO NOTHING`,
             [crypto.randomUUID(), hostelId, studentId, fee, fee, monthStart, dueDate, 'pending']
           )
         }
@@ -400,6 +426,16 @@ async function bulkAddStudents(req, res) {
 
     await conn.query('COMMIT')
     conn.release()
+
+    // Send welcome emails asynchronously
+    const { sendWelcomeEmail } = require('../utils/emailService')
+    for (const s of students) {
+      if (s.email) {
+        sendWelcomeEmail(s.email, s.full_name, 'Student@123')
+          .catch(err => console.error('Failed to send bulk welcome email:', err))
+      }
+    }
+
     res.json({ success: true, message: `Successfully bulk imported ${students.length} students`, data: results })
   } catch (error) {
     await conn.query('ROLLBACK')
