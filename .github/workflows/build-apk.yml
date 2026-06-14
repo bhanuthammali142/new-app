@@ -63,11 +63,11 @@ jobs:
               -validity 10000 \
               -dname "CN=HostelOS, OU=Development, O=HostelOS, L=HostelOS, S=HostelOS, C=US" \
               -storepass tempstorepass \
-              -keypass tempkeypass
+              -keypass tempstorepass
             echo "KEYSTORE_FILE=release.keystore" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=tempstorepass" >> $GITHUB_ENV
             echo "KEY_ALIAS=hostelkey" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=tempkeypass" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=tempstorepass" >> $GITHUB_ENV
           fi
 
       - name: Build APKs (Debug and Release)
