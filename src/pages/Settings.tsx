@@ -694,28 +694,28 @@ export function Settings() {
       {/* Bottom Navigation Bar for Mobile (Mocked to match user screenshot style) */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t border-slate-200/60 py-2 px-6 flex justify-between items-center z-50 md:hidden shadow-lg shadow-black/5">
         <button 
-          onClick={() => window.location.href = '/admin'}
+          onClick={() => window.location.href = '#/admin'}
           className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
         >
           <LayoutGrid className="h-5 w-5" />
           <span className="text-[10px] font-bold">Dashboard</span>
         </button>
         <button 
-          onClick={() => window.location.href = '/admin/bookings'}
+          onClick={() => window.location.href = '#/admin/bookings'}
           className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
         >
           <CalendarRange className="h-5 w-5" />
           <span className="text-[10px] font-bold">Bookings</span>
         </button>
         <button 
-          onClick={() => window.location.href = '/admin/rooms'}
+          onClick={() => window.location.href = '#/admin/rooms'}
           className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition"
         >
           <Bed className="h-5 w-5" />
           <span className="text-[10px] font-bold">Rooms</span>
         </button>
         <button 
-          onClick={() => window.location.href = '/admin/students'}
+          onClick={() => window.location.href = '#/admin/students'}
           className="flex flex-col items-center gap-1 text-indigo-600 transition"
         >
           <Users className="h-5 w-5" />

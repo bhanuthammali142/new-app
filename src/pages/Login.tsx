@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
-const envApiUrl = import.meta.env.VITE_API_URL || 'https://hostelos-yis2.onrender.com/api'
+const envApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 const BASE_URL = envApiUrl.replace(/\/api$/, '')
 
 export function Login() {
@@ -29,10 +29,10 @@ export function Login() {
   }, [])
 
   const redirectByRole = (role: string) => {
-    if (role === 'super_admin') window.location.href = '/superadmin/dashboard'
-    else if (role === 'admin')   window.location.href = '/admin/dashboard'
-    else if (role === 'student') window.location.href = '/student/dashboard'
-    else window.location.href = '/login'
+    if (role === 'super_admin') window.location.href = '#/superadmin/dashboard'
+    else if (role === 'admin')   window.location.href = '#/admin/dashboard'
+    else if (role === 'student') window.location.href = '#/student/dashboard'
+    else window.location.href = '#/login'
   }
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -1,6 +1,6 @@
 // src/App.tsx
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './lib/AuthContext'
 import { AdminRoute, StudentRoute, SuperAdminRoute } from './lib/RouteGuards'
@@ -52,7 +52,7 @@ const Fallback = () => <PageSkeleton />
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <Toaster
           position="top-right"
@@ -137,7 +137,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 

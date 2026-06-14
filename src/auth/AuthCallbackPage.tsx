@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react'
 export function AuthCallbackPage() {
   useEffect(() => {
     // JWT auth needs no callback; just redirect to login
-    window.location.href = '/login'
+    window.location.href = '#/login'
   }, [])
 
   return (

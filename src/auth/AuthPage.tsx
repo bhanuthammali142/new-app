@@ -36,17 +36,17 @@ export function AuthPage() {
         toast.success('Welcome back!')
         // Redirect via useEffect once state updates
         window.location.href = loggedIn.role === 'super_admin'
-          ? '/superadmin/dashboard'
+          ? '#/superadmin/dashboard'
           : loggedIn.role === 'admin'
-          ? '/admin/dashboard'
-          : '/student/dashboard'
+          ? '#/admin/dashboard'
+          : '#/student/dashboard'
       } else {
         if (!name.trim()) { toast.error('Name is required'); setIsSubmitting(false); return }
         const { token, user: created } = await apiAuth.register(name, email, password)
         setToken(token)
         setStoredUser(created)
         toast.success('Admin account created! Setting up your dashboard...')
-        window.location.href = '/admin/dashboard'
+        window.location.href = '#/admin/dashboard'
       }
     } catch (err: any) {
       toast.error(err.message || 'Authentication failed')

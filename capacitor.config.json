@@ -1,0 +1,6 @@
+{
+  "appId": "com.hostelos.app",
+  "appName": "HostelOS",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

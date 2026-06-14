@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearToken()
     setUserState(null)
     setStudentData(null)
-    window.location.href = '/login'
+    window.location.href = '#/login'
   }
 
   const role = user?.role ?? null

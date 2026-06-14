@@ -1,7 +1,7 @@
 // HostelOS API Client
-// Backend: https://hostelos-yis2.onrender.com
+// Backend: http://localhost:5001
 
-const envApiUrl = import.meta.env.VITE_API_URL || 'https://hostelos-yis2.onrender.com/api'
+const envApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 const BASE_URL = envApiUrl.replace(/\/api$/, '')
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
   // Block unauthenticated requests (except auth routes)
   if (!token && !isAuthRoute) {
     clearToken()
-    window.location.href = '/login'
+    window.location.href = '#/login'
     throw new Error('No authentication token found. Please log in.')
   }
 
@@ -76,7 +76,7 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
   // Handle 401 - token expired
   if (res.status === 401 && !isAuthRoute) {
     clearToken()
-    window.location.href = '/login'
+    window.location.href = '#/login'
     throw new Error('Session expired. Please log in again.')
   }
 

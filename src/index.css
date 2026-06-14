@@ -91,6 +91,12 @@
   .gradient-bg {
     @apply bg-gradient-to-tr from-slate-50 via-white to-blue-50/20;
   }
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 @keyframes shimmer {
